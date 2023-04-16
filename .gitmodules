@@ -1,0 +1,3 @@
+[submodule "qnearbyshared/QtZeroConf"]
+	path = qnearbyshared/QtZeroConf
+	url = https://github.com/jbagg/QtZeroConf.git
