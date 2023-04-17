@@ -13,12 +13,17 @@
 #include <QTextStream>
 #include <QtEndian>
 #include <QCryptographicHash>
+#include <QMap>
+#include <QRandomGenerator64>
+#include <QTimer>
 
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 
 #include "cryptography.h"
 #include "endpointinfo.h"
+#include "nearbypayload.h"
+#include "securegcm.pb.h"
 
 struct NearbySocketPrivate {
     QIODevice* io = nullptr;
@@ -48,11 +53,23 @@ struct NearbySocketPrivate {
     QByteArray receiveHmacKey;
     QByteArray encryptKey;
     QByteArray sendHmacKey;
+
+    qint32 peerSeq = 0;
+    qint32 mySeq = 1;
+
+    QTimer* keepaliveTimer;
+    QMap<quint64, NearbyPayloadPtr> pendingPayloads;
 };
 
 NearbySocket::NearbySocket(QIODevice *ioDevice, QObject *parent) : QObject(parent) {
     d = new NearbySocketPrivate();
     d->io = ioDevice;
+
+    d->keepaliveTimer = new QTimer(this);
+    d->keepaliveTimer->setInterval(10000);
+    connect(d->keepaliveTimer, &QTimer::timeout, this, [this] {
+        this->sendKeepalive(false);
+    });
 
     connect(d->io, &QIODevice::readyRead, this, &NearbySocket::readBuffer);
 }
@@ -164,6 +181,7 @@ void NearbySocket::processOfflineFrame(QByteArray frame) {
                             sendPacket(offlineResponse);
 
                             d->state = NearbySocketPrivate::Ready;
+                            d->keepaliveTimer->start();
 
                             emit readyForEncryptedMessages();
                         }
@@ -297,10 +315,10 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
                         m1m2.append(m2);
 
                         auto authString = Cryptography::hkdfExtractExpand("UKEY2 v1 auth", dhs, m1m2, lAuth);
-                        auto nextSecret = Cryptography::hkdfExtractExpand(QByteArray("UKEY2 v1 next", 13), dhs, m1m2, lNext);
+                        auto nextSecret = Cryptography::hkdfExtractExpand("UKEY2 v1 next", dhs, m1m2, lNext);
 
-                        auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, QByteArray("client", 6), 32);
-                        auto d2dServer = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, QByteArray("server", 6), 32);
+                        auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "client", 32);
+                        auto d2dServer = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "server", 32);
 
                         auto keySalt = QByteArray::fromHex("BF9D2A53C63616D75DB0A7165B91C1EF73E537F2427405FA23610A4BE657642E");
                         auto clientKey = Cryptography::hkdfExtractExpand(keySalt, d2dClient, "ENC:2", 32);
@@ -337,11 +355,47 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
 }
 
 void NearbySocket::sendPacket(const QByteArray& packet) {
-    quint32 packetLength = packet.length();
+    QByteArray plainPacket = packet;
+    if (d->state == NearbySocketPrivate::Ready) {
+        // Encrypt the packet before sending it
+        securegcm::DeviceToDeviceMessage d2dm;
+        d2dm.set_sequence_number(d->mySeq);
+        d2dm.set_message(packet.toStdString());
+
+        d->mySeq++;
+
+        auto d2dmBytes = QByteArray::fromStdString(d2dm.SerializeAsString());
+        auto iv = Cryptography::randomBytes(16);
+        auto encrypted = Cryptography::aes256cbcEncrypt(d2dmBytes, d->encryptKey, iv);
+
+        securegcm::GcmMetadata metadata;
+        metadata.set_type(securegcm::DEVICE_TO_DEVICE_MESSAGE);
+        metadata.set_version(1);
+
+        auto header = new securemessage::Header();
+        header->set_encryption_scheme(securemessage::AES_256_CBC);
+        header->set_signature_scheme(securemessage::HMAC_SHA256);
+        header->set_public_metadata(metadata.SerializeAsString());
+        header->set_iv(iv.toStdString());
+
+        securemessage::HeaderAndBody headerAndBody;
+        headerAndBody.set_allocated_header(header);
+        headerAndBody.set_body(encrypted.toStdString());
+
+        auto headerAndBodyBytes = QByteArray::fromStdString(headerAndBody.SerializeAsString());
+
+        securemessage::SecureMessage message;
+        message.set_signature(Cryptography::hmacSha256Signature(headerAndBodyBytes, d->sendHmacKey));
+        message.set_header_and_body(headerAndBodyBytes.toStdString());
+
+        plainPacket = QByteArray::fromStdString(message.SerializeAsString());
+    }
+
+    quint32 packetLength = plainPacket.length();
     auto bePacketLength = qToBigEndian(packetLength);
 
     d->io->write(reinterpret_cast<char*>(&bePacketLength), 4);
-    d->io->write(packet);
+    d->io->write(plainPacket);
 }
 
 void NearbySocket::sendPacket(const google::protobuf::MessageLite& message) {
@@ -388,6 +442,131 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
         return;
     }
 
+    //TODO: sequence number
     auto seq = d2dm.sequence_number();
-    emit messageReceived(QByteArray::fromStdString(d2dm.message()));
+
+    location::nearby::connections::OfflineFrame offlineFrame;
+    success = offlineFrame.ParseFromString(d2dm.message());
+    if (!success) {
+        QTextStream(stderr) << "Could not parse decrypted packet as offline frame";
+        return;
+    }
+
+    if (offlineFrame.version() != location::nearby::connections::OfflineFrame_Version_V1) {
+        QTextStream(stderr) << "Received offline frame with version != 1";
+        return;
+    }
+
+    auto v1 = offlineFrame.v1();
+
+    switch (v1.type()) {
+        case location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER: {
+            auto payloadTransfer = v1.payload_transfer();
+            auto payloadHeader = payloadTransfer.payload_header();
+            auto payloadChunk = payloadTransfer.payload_chunk();
+            auto id = payloadHeader.id();
+
+            NearbyPayloadPtr payload;
+            if (d->pendingPayloads.contains(id)) {
+                payload = d->pendingPayloads.value(id);
+            } else {
+                payload = NearbyPayloadPtr(new NearbyPayload(payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
+                d->pendingPayloads.insert(id, payload);
+            }
+
+            payload->loadChunk(payloadChunk.offset(), QByteArray::fromStdString(payloadChunk.body()));
+            if (payloadChunk.flags() & location::nearby::connections::PayloadTransferFrame_PayloadChunk_Flags_LAST_CHUNK) {
+                payload->setCompleted();
+                d->pendingPayloads.remove(id);
+
+                emit messageReceived(payload);
+            }
+            break;
+        }
+        case location::nearby::connections::V1Frame_FrameType_KEEP_ALIVE: {
+            auto ka = v1.keep_alive();
+            if (ka.ack()) {
+                QTextStream(stderr) << "Sent keepalive was ack'd\n";
+            } else {
+                sendKeepalive(true);
+            }
+            break;
+        }
+        default:
+            QTextStream(stderr) << "Received decrypted offline frame not PAYLOAD_TRANSFER or KEEP_ALIVE\n";
+            break;
+    }
+}
+
+void NearbySocket::sendPayloadPacket(const QByteArray &packet) {
+    auto id = QRandomGenerator64::global()->generate();
+
+    auto payloadHeader1 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
+    payloadHeader1->set_id(id);
+    payloadHeader1->set_type(location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES);
+    payloadHeader1->set_total_size(packet.length());
+    payloadHeader1->set_is_sensitive(false);
+
+    auto payloadChunk1 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();
+    payloadChunk1->set_offset(0);
+    payloadChunk1->set_flags(0);
+    payloadChunk1->set_body(packet.toStdString());
+
+    auto payloadTransfer1 = new location::nearby::connections::PayloadTransferFrame();
+    payloadTransfer1->set_packet_type(location::nearby::connections::PayloadTransferFrame_PacketType_DATA);
+    payloadTransfer1->set_allocated_payload_header(payloadHeader1);
+    payloadTransfer1->set_allocated_payload_chunk(payloadChunk1);
+
+    auto v1_1 = new location::nearby::connections::V1Frame();
+    v1_1->set_type(location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER);
+    v1_1->set_allocated_payload_transfer(payloadTransfer1);
+
+    location::nearby::connections::OfflineFrame offlineFrame1;
+    offlineFrame1.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+    offlineFrame1.set_allocated_v1(v1_1);
+    sendPacket(offlineFrame1);
+
+    auto payloadHeader2 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
+    payloadHeader2->set_id(id);
+    payloadHeader2->set_type(location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES);
+    payloadHeader2->set_total_size(packet.length());
+    payloadHeader2->set_is_sensitive(false);
+
+    auto payloadChunk2 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();
+    payloadChunk2->set_offset(packet.length());
+    payloadChunk2->set_flags(location::nearby::connections::PayloadTransferFrame_PayloadChunk_Flags_LAST_CHUNK);
+    payloadChunk2->set_body(QByteArray().toStdString());
+
+    auto payloadTransfer2 = new location::nearby::connections::PayloadTransferFrame();
+    payloadTransfer2->set_packet_type(location::nearby::connections::PayloadTransferFrame_PacketType_DATA);
+    payloadTransfer2->set_allocated_payload_header(payloadHeader2);
+    payloadTransfer2->set_allocated_payload_chunk(payloadChunk2);
+
+    auto v1_2 = new location::nearby::connections::V1Frame();
+    v1_2->set_type(location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER);
+    v1_2->set_allocated_payload_transfer(payloadTransfer2);
+
+    location::nearby::connections::OfflineFrame offlineFrame2;
+    offlineFrame2.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+    offlineFrame2.set_allocated_v1(v1_2);
+    sendPacket(offlineFrame2);
+}
+
+void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite &message) {
+    sendPayloadPacket(QByteArray::fromStdString(message.SerializeAsString()));
+}
+
+void NearbySocket::sendKeepalive(bool isAck) {
+    auto ka = new location::nearby::connections::KeepAliveFrame();
+    ka->set_ack(isAck);
+
+    auto v1 = new location::nearby::connections::V1Frame();
+    v1->set_type(location::nearby::connections::V1Frame_FrameType_KEEP_ALIVE);
+    v1->set_allocated_keep_alive(ka);
+
+    location::nearby::connections::OfflineFrame offlineFrame;
+    offlineFrame.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+    offlineFrame.set_allocated_v1(v1);
+
+    sendPacket(offlineFrame);
 }

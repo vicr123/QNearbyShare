@@ -7,6 +7,7 @@ set(SOURCES
         nearbyshare/endpointinfo.cpp
         nearbyshare/cryptography.cpp
         nearbyshare/nearbyshareclient.cpp
+        nearbyshare/nearbypayload.cpp
         )
 
 set(HEADERS
@@ -14,7 +15,9 @@ set(HEADERS
         nearbyshare/nearbysocket.h
         nearbyshare/endpointinfo.h
         nearbyshare/cryptography.h
-        nearbyshare/nearbyshareclient.h)
+        nearbyshare/nearbyshareclient.h
+        nearbyshare/nearbypayload.h
+        )
 
 add_subdirectory(QtZeroConf)
 add_subdirectory(proto)

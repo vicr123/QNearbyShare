@@ -25,7 +25,9 @@ namespace Cryptography {
     QByteArray diffieHellman(evp_pkey_st* ourKey, QByteArray peerX, QByteArray peerY);
     QByteArray hkdfExtractExpand(const QByteArray& salt, const QByteArray& ikm, const QByteArray& info, size_t length);
 
+    QByteArray aes256cbc(const QByteArray &input, const QByteArray &key, const QByteArray &iv, bool isEncrypt);
     QByteArray aes256cbcDecrypt(const QByteArray& ciphertext, const QByteArray& key, const QByteArray& iv);
+    QByteArray aes256cbcEncrypt(const QByteArray& plaintext, const QByteArray& key, const QByteArray& iv);
     QByteArray hmacSha256Signature(const QByteArray& data, const QByteArray& key);
 };
 

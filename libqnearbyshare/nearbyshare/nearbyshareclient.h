@@ -5,6 +5,7 @@
 #ifndef QNEARBYSHARE_NEARBYSHARECLIENT_H
 #define QNEARBYSHARE_NEARBYSHARECLIENT_H
 
+#include "nearbypayload.h"
 #include <QObject>
 
 struct NearbyShareClientPrivate;
@@ -18,6 +19,9 @@ private:
     NearbyShareClientPrivate* d;
 
     void readyForEncryptedMessages();
+    void messageReceived(const NearbyPayloadPtr& payload);
+
+    void sendPairedKeyEncryptionResponse();
 };
 
 

@@ -7,13 +7,23 @@
 
 #include <openssl/ec.h>
 
-TEST(crypto, aes256) {
+TEST(crypto, aes256decrypt) {
     QByteArray expected("HELLO WORLD");
     QByteArray iv("AABBCCDDEEFFGGHH");
     QByteArray key("SECRETKEY1234567SECRETKEY1234567");
     QByteArray ciphertext = QByteArray::fromHex("240252C8656EED9FD468E75ECBD202CA");
 
     auto decrypted = Cryptography::aes256cbcDecrypt(ciphertext, key, iv);
+    EXPECT_EQ(decrypted, expected);
+}
+
+TEST(crypto, aes256encrypt) {
+    QByteArray expected = QByteArray::fromHex("240252C8656EED9FD468E75ECBD202CA");
+    QByteArray iv("AABBCCDDEEFFGGHH");
+    QByteArray key("SECRETKEY1234567SECRETKEY1234567");
+    QByteArray plaintext("HELLO WORLD");
+
+    auto decrypted = Cryptography::aes256cbcEncrypt(plaintext, key, iv);
     EXPECT_EQ(decrypted, expected);
 }
 
@@ -32,4 +42,9 @@ TEST(crypto, diffiehellman) {
 
     auto dhs = Cryptography::diffieHellman(evpKey, clientX, clientY);
     EXPECT_EQ(dhs, expected);
+}
+
+TEST(crypto, random) {
+    auto bytes = Cryptography::randomBytes(6);
+    EXPECT_EQ(bytes.length(), 6);
 }

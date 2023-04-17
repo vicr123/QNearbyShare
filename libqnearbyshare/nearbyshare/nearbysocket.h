@@ -6,6 +6,7 @@
 #define QNEARBYSHARE_NEARBYSOCKET_H
 
 #include <QObject>
+#include "nearbypayload.h"
 #include <google/protobuf/message_lite.h>
 
 class QIODevice;
@@ -20,9 +21,12 @@ public:
     void sendPacket(const QByteArray& packet);
     void sendPacket(const google::protobuf::MessageLite& message);
 
+    void sendPayloadPacket(const QByteArray& packet);
+    void sendPayloadPacket(const google::protobuf::MessageLite& message);
+
     signals:
         void readyForEncryptedMessages();
-        void messageReceived(QByteArray packet);
+        void messageReceived(NearbyPayloadPtr payload);
 
 private:
     NearbySocketPrivate * d;
@@ -31,6 +35,7 @@ private:
     void processOfflineFrame(QByteArray frame);
     void processUkey2Frame(QByteArray frame);
     void processSecureFrame(const QByteArray& frame);
+    void sendKeepalive(bool isAck);
 
 };
 

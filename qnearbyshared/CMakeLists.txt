@@ -9,6 +9,9 @@ set(HEADERS
         )
 
 
-add_executable(QNearbyShare ${SOURCES} ${HEADERS})
-target_include_directories(QNearbyShare PRIVATE ../libqnearbyshare)
-target_link_libraries(QNearbyShare libqnearbyshare Qt::Core Qt::Network)
+add_executable(QNearbyShare-daemon ${SOURCES} ${HEADERS})
+target_include_directories(QNearbyShare-daemon PRIVATE ../libqnearbyshare)
+target_link_libraries(QNearbyShare-daemon libqnearbyshare Qt::Core Qt::Network)
+set_target_properties(QNearbyShare-daemon PROPERTIES
+    OUTPUT_NAME "qnearbyshared"
+)

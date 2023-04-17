@@ -179,7 +179,7 @@ QByteArray Cryptography::hkdfExtractExpand(const QByteArray& salt, const QByteAr
     return outputKey;
 }
 
-QByteArray Cryptography::aes256cbcDecrypt(const QByteArray& ciphertext, const QByteArray& key, const QByteArray& iv) {
+QByteArray Cryptography::aes256cbc(const QByteArray &input, const QByteArray &key, const QByteArray &iv, bool isEncrypt) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
         return {};
@@ -187,31 +187,31 @@ QByteArray Cryptography::aes256cbcDecrypt(const QByteArray& ciphertext, const QB
 
     EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
 
-    if (EVP_CipherInit_ex(ctx, EVP_aes_256_cbc(), nullptr, reinterpret_cast<const unsigned char *>(key.constData()), reinterpret_cast<const unsigned char *>(iv.constData()), 0) <= 0) {
+    if (EVP_CipherInit_ex(ctx, EVP_aes_256_cbc(), nullptr, reinterpret_cast<const unsigned char *>(key.constData()), reinterpret_cast<const unsigned char *>(iv.constData()), isEncrypt) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return {};
     }
 
-    QByteArray plaintext(ciphertext.length() + 32, Qt::Uninitialized);
-    int plaintextLength;
-    if (EVP_CipherUpdate(ctx, reinterpret_cast<unsigned char *>(plaintext.data()), &plaintextLength, reinterpret_cast<const unsigned char *>(ciphertext.constData()), ciphertext.length()) <= 0) {
+    QByteArray output(input.length() + 32, Qt::Uninitialized);
+    int outputLength;
+    if (EVP_CipherUpdate(ctx, reinterpret_cast<unsigned char *>(output.data()), &outputLength, reinterpret_cast<const unsigned char *>(input.constData()), input.length()) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return {};
     }
 
-    auto fullPlaintextLength = plaintextLength;
-    if(EVP_CipherFinal_ex(ctx, reinterpret_cast<unsigned char *>(plaintext.data() + plaintextLength), &plaintextLength) <= 0) {
+    auto fullOutputLength = outputLength;
+    if(EVP_CipherFinal_ex(ctx, reinterpret_cast<unsigned char *>(output.data() + outputLength), &outputLength) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return {};
     }
-    fullPlaintextLength += plaintextLength;
+    fullOutputLength += outputLength;
 
-    plaintext.truncate(fullPlaintextLength);
+    output.truncate(fullOutputLength);
 
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
 
-    return plaintext;
+    return output;
 }
 
 QByteArray Cryptography::randomBytes(qint64 length) {
@@ -268,4 +268,12 @@ BIGNUM *Cryptography::bytesToBignum(QByteArray ba) {
 
     auto bn = BN_bin2bn(reinterpret_cast<const unsigned char *>(ba.constData()), ba.length(), nullptr);
     return bn;
+}
+
+QByteArray Cryptography::aes256cbcDecrypt(const QByteArray &ciphertext, const QByteArray &key, const QByteArray &iv) {
+    return aes256cbc(ciphertext, key, iv, false);
+}
+
+QByteArray Cryptography::aes256cbcEncrypt(const QByteArray &plaintext, const QByteArray &key, const QByteArray &iv) {
+    return aes256cbc(plaintext, key, iv, true);
 }
