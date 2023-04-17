@@ -15,6 +15,8 @@ public:
     explicit NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent = nullptr);
     ~NearbyShareClient();
 
+    static QString pinCodeFromAuthString(const QByteArray& authString);
+
 private:
     NearbyShareClientPrivate* d;
 

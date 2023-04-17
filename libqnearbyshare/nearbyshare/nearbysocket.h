@@ -24,6 +24,8 @@ public:
     void sendPayloadPacket(const QByteArray& packet);
     void sendPayloadPacket(const google::protobuf::MessageLite& message);
 
+    QByteArray authString();
+
     signals:
         void readyForEncryptedMessages();
         void messageReceived(NearbyPayloadPtr payload);

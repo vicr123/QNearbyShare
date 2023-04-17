@@ -61,9 +61,18 @@ void NearbyShareClient::messageReceived(const NearbyPayloadPtr& payload) {
 
         case sharing::nearby::V1Frame_FrameType_UNKNOWN_FRAME_TYPE:
             break;
-        case sharing::nearby::V1Frame_FrameType_INTRODUCTION:
-            QTextStream(stderr) << "Got introduction frame\n";
+        case sharing::nearby::V1Frame_FrameType_INTRODUCTION: {
+            auto introduction = v1.introduction();
+
+            QTextStream(stdout) << "Ready for transfer from remote device:\n";
+            QTextStream(stdout) << "PIN: " << pinCodeFromAuthString(d->socket->authString()) << "\n";
+            QTextStream(stdout) << "Incoming files:\n";
+            for (auto meta : introduction.file_metadata()) {
+                QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
+            }
+
             break;
+        }
         case sharing::nearby::V1Frame_FrameType_RESPONSE:
             break;
         case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION: {
@@ -96,4 +105,16 @@ void NearbyShareClient::sendPairedKeyEncryptionResponse() {
     nearbyFrame.set_allocated_v1(v1);
 
     d->socket->sendPayloadPacket(nearbyFrame);
+}
+
+QString NearbyShareClient::pinCodeFromAuthString(const QByteArray& authString) {
+    int hash = 0;
+    int multiplier = 1;
+    for (auto c : authString) {
+        uchar uc = *reinterpret_cast<uchar*>(&c);
+        hash = (hash + static_cast<char>(uc) * multiplier) % 9973;
+        multiplier = (multiplier * 31) % 9973;
+    }
+
+    return QString::number(abs(hash));
 }

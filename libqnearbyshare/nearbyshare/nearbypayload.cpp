@@ -6,6 +6,7 @@
 #include "nearbypayload.h"
 
 struct NearbyPayloadPrivate {
+    quint64 id;
     bool isBytes;
     quint64 totalSize;
 
@@ -13,8 +14,9 @@ struct NearbyPayloadPrivate {
     bool completed = false;
 };
 
-NearbyPayload::NearbyPayload(bool isBytes) {
+NearbyPayload::NearbyPayload(quint64 id, bool isBytes) {
     d = new NearbyPayloadPrivate();
+    d->id = id;
     d->isBytes = isBytes;
 }
 
@@ -45,4 +47,8 @@ bool NearbyPayload::completed() {
 
 bool NearbyPayload::isBytes() {
     return d->isBytes;
+}
+
+quint64 NearbyPayload::id() {
+    return d->id;
 }

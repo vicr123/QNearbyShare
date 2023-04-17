@@ -11,12 +11,13 @@
 struct NearbyPayloadPrivate;
 class NearbyPayload {
 public:
-    explicit NearbyPayload(bool isBytes);
+    explicit NearbyPayload(quint64 id, bool isBytes);
     ~NearbyPayload();
 
     void loadChunk(quint64 offset, const QByteArray& body);
     void setCompleted();
 
+    quint64 id();
     QByteArray data();
     bool completed();
     bool isBytes();

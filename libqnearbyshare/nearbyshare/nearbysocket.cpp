@@ -53,6 +53,7 @@ struct NearbySocketPrivate {
     QByteArray receiveHmacKey;
     QByteArray encryptKey;
     QByteArray sendHmacKey;
+    QByteArray authString;
 
     qint32 peerSeq = 0;
     qint32 mySeq = 1;
@@ -314,7 +315,7 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
                         m1m2.append(m1);
                         m1m2.append(m2);
 
-                        auto authString = Cryptography::hkdfExtractExpand("UKEY2 v1 auth", dhs, m1m2, lAuth);
+                        d->authString = Cryptography::hkdfExtractExpand("UKEY2 v1 auth", dhs, m1m2, lAuth);
                         auto nextSecret = Cryptography::hkdfExtractExpand("UKEY2 v1 next", dhs, m1m2, lNext);
 
                         auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "client", 32);
@@ -461,16 +462,16 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
 
     switch (v1.type()) {
         case location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER: {
-            auto payloadTransfer = v1.payload_transfer();
-            auto payloadHeader = payloadTransfer.payload_header();
-            auto payloadChunk = payloadTransfer.payload_chunk();
+            const auto& payloadTransfer = v1.payload_transfer();
+            const auto& payloadHeader = payloadTransfer.payload_header();
+            const auto& payloadChunk = payloadTransfer.payload_chunk();
             auto id = payloadHeader.id();
 
             NearbyPayloadPtr payload;
             if (d->pendingPayloads.contains(id)) {
                 payload = d->pendingPayloads.value(id);
             } else {
-                payload = NearbyPayloadPtr(new NearbyPayload(payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
+                payload = NearbyPayloadPtr(new NearbyPayload(id, payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
                 d->pendingPayloads.insert(id, payload);
             }
 
@@ -569,4 +570,8 @@ void NearbySocket::sendKeepalive(bool isAck) {
     offlineFrame.set_allocated_v1(v1);
 
     sendPacket(offlineFrame);
+}
+
+QByteArray NearbySocket::authString() {
+    return d->authString;
 }
