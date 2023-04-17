@@ -12,6 +12,7 @@
 #include <QIODevice>
 #include <QTextStream>
 #include <QtEndian>
+#include <QCryptographicHash>
 
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -285,10 +286,9 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
 
                         auto ecp256 = publickey.ec_p256_public_key();
 
-                        auto dhs = Cryptography::diffieHellman(d->clientKey, QByteArray::fromStdString(ecp256.x()), QByteArray::fromStdString(ecp256.y()));
+                        auto dhs = QCryptographicHash::hash(Cryptography::diffieHellman(d->clientKey, QByteArray::fromStdString(ecp256.x()), QByteArray::fromStdString(ecp256.y())), QCryptographicHash::Sha256);
                         auto m1 = d->clientInitMessage;
                         auto m2 = d->serverInitMessage;
-//                        auto hash = d->clientHash;
                         const auto lAuth = 32;
                         const auto lNext = 32;
 
@@ -297,10 +297,10 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
                         m1m2.append(m2);
 
                         auto authString = Cryptography::hkdfExtractExpand("UKEY2 v1 auth", dhs, m1m2, lAuth);
-                        auto nextSecret = Cryptography::hkdfExtractExpand("UKEY2 v1 next", dhs, m1m2, lNext);
+                        auto nextSecret = Cryptography::hkdfExtractExpand(QByteArray("UKEY2 v1 next", 13), dhs, m1m2, lNext);
 
-                        auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "client", 32);
-                        auto d2dServer = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "server", 32);
+                        auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, QByteArray("client", 6), 32);
+                        auto d2dServer = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, QByteArray("server", 6), 32);
 
                         auto keySalt = QByteArray::fromHex("BF9D2A53C63616D75DB0A7165B91C1EF73E537F2427405FA23610A4BE657642E");
                         auto clientKey = Cryptography::hkdfExtractExpand(keySalt, d2dClient, "ENC:2", 32);
@@ -348,7 +348,7 @@ void NearbySocket::sendPacket(const google::protobuf::MessageLite& message) {
     sendPacket(QByteArray::fromStdString(message.SerializeAsString()));
 }
 
-void NearbySocket::processSecureFrame(QByteArray frame) {
+void NearbySocket::processSecureFrame(const QByteArray& frame) {
     securemessage::SecureMessage message;
     auto success = message.ParseFromString(frame.toStdString());
     if (!success) return;

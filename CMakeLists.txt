@@ -10,4 +10,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 find_package(QT REQUIRED NAMES Qt6)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Network Protobuf REQUIRED)
 
+add_subdirectory(libqnearbyshare)
 add_subdirectory(qnearbyshared)
+add_subdirectory(test)

@@ -8,7 +8,10 @@
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
+#include <openssl/bn.h>
 #include <QMessageAuthenticationCode>
+#include <QTextStream>
+#include <utility>
 
 
 EVP_PKEY *Cryptography::generateEcdsaKeyPair() {
@@ -65,9 +68,9 @@ QByteArray Cryptography::ecdsaBignumParam(evp_pkey_st *key, const char *paramNam
         return {};
     }
 
-    QByteArray nBytes(degree / 8, Qt::Uninitialized);
+//    QByteArray nBytes(degree / 8, Qt::Uninitialized);
 
-    BN_bn2binpad(n, reinterpret_cast<unsigned char *>(nBytes.data()), degree / 8);
+    auto nBytes = bignumToBytes(n);
     BN_free(n);
     return nBytes;
 }
@@ -81,22 +84,15 @@ QByteArray Cryptography::ecdsaY(evp_pkey_st *key, int degree) {
 }
 
 QByteArray Cryptography::diffieHellman(evp_pkey_st *ourKey, QByteArray peerX, QByteArray peerY) {
-    QByteArray peerEncodedKey;
-    peerEncodedKey.append(0x04);
-    peerEncodedKey.append(peerX);
-    peerEncodedKey.append(peerY);
-
-    auto bnX = BN_new();
-    auto bnY = BN_new();
-
-    BN_bin2bn(reinterpret_cast<const unsigned char *>(peerX.constData()), peerX.length(), bnX);
-    BN_bin2bn(reinterpret_cast<const unsigned char *>(peerY.constData()), peerY.length(), bnY);
+    auto bnX = bytesToBignum(std::move(peerX));
+    auto bnY = bytesToBignum(std::move(peerY));
 
     EC_KEY* ecPeerKey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
     if (!EC_KEY_set_public_key_affine_coordinates(ecPeerKey, bnX, bnY))
     {
         BN_free(bnX);
         BN_free(bnY);
+        return {};
     }
     BN_free(bnX);
     BN_free(bnY);
@@ -126,22 +122,24 @@ QByteArray Cryptography::diffieHellman(evp_pkey_st *ourKey, QByteArray peerX, QB
     }
 
     /* Determine buffer length for shared secret */
-    size_t secret_len;
-    if (EVP_PKEY_derive(ctx, nullptr, &secret_len) <= 0) {
+    size_t secretLen;
+    if (EVP_PKEY_derive(ctx, nullptr, &secretLen) <= 0) {
         EVP_PKEY_CTX_free(ctx);
         EVP_PKEY_free(peerKey);
         return {};
     }
 
     /* Create the buffer */
-    QByteArray secret(secret_len, Qt::Uninitialized);
+    QByteArray secret(secretLen, Qt::Uninitialized);
 
     /* Derive the shared secret */
-    if(EVP_PKEY_derive(ctx, reinterpret_cast<unsigned char *>(secret.data()), &secret_len) != 1){
+    if(EVP_PKEY_derive(ctx, reinterpret_cast<unsigned char *>(secret.data()), &secretLen) != 1){
         EVP_PKEY_CTX_free(ctx);
         EVP_PKEY_free(peerKey);
         return {};
     }
+
+    secret.truncate(secretLen);
 
     EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(peerKey);
@@ -229,4 +227,45 @@ QByteArray Cryptography::hmacSha256Signature(const QByteArray &data, const QByte
     QMessageAuthenticationCode code(QCryptographicHash::Sha256, key);
     code.addData(data);
     return code.result();
+}
+
+QByteArray Cryptography::bignumToBytes(BIGNUM *bn) {
+    auto bnBytes = BN_num_bytes(bn);
+    QByteArray numData(bnBytes, Qt::Uninitialized);
+    BN_bn2bin(bn, reinterpret_cast<unsigned char *>(numData.data()));
+
+    auto hexRep = BN_bn2hex(bn);
+    auto isNegative = hexRep[0] == '-';
+    if (isNegative) {
+        QTextStream(stderr) << "Conversion to bytes: BIGNUM was negative";
+    }
+
+    /*
+     * 0000 0000 -> 0
+     * 0000 0001 -> 1
+     * 0000 0010 -> 2
+     * 0000 0011 -> 3
+     * 0000 0100 -> 4
+     * 0000 0101 -> 5
+     * 0000 0110 -> 6
+     * 0000 0111 -> 7
+     * 0000 1000 -> 8
+     * 1001 -> 1000 -> 0111 -> -7
+     */
+
+    if (numData.at(0) & 80) {
+        // Pad with 0 if not already padded
+        numData.prepend('\0');
+    }
+
+    return numData;
+}
+
+BIGNUM *Cryptography::bytesToBignum(QByteArray ba) {
+    if (ba[0] & 0x80) {
+        QTextStream(stderr) << "Conversion to BIGNUM: BIGNUM was negative";
+    }
+
+    auto bn = BN_bin2bn(reinterpret_cast<const unsigned char *>(ba.constData()), ba.length(), nullptr);
+    return bn;
 }

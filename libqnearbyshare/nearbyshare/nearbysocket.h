@@ -30,7 +30,7 @@ private:
     void readBuffer();
     void processOfflineFrame(QByteArray frame);
     void processUkey2Frame(QByteArray frame);
-    void processSecureFrame(QByteArray frame);
+    void processSecureFrame(const QByteArray& frame);
 
 };
 

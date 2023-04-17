@@ -11,12 +11,10 @@
 #include <QTcpSocket>
 
 #include "endpointinfo.h"
-#include "nearbysocket.h"
 
 // Protocol documentation: https://github.com/grishka/NearDrop/blob/master/PROTOCOL.md
 
 #include "nearbyshareclient.h"
-#include "wire_format.pb.h"
 
 struct NearbyShareServerPrivate {
     bool running = false;
@@ -69,7 +67,6 @@ void NearbyShareServer::stop() {
 void NearbyShareServer::acceptPendingConnection() {
     auto socket = d->tcp->nextPendingConnection();
     QTextStream(stdout) << "Pending connection accepted\n";
-//    socket->close();
 
     auto ns = new NearbyShareClient(socket, true);
 }
