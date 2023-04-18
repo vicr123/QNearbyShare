@@ -6,6 +6,7 @@
 #define QNEARBYSHARE_NEARBYSHARESERVER_H
 
 #include <QObject>
+#include "nearbyshareclient.h"
 
 struct NearbyShareServerPrivate;
 class NearbyShareServer : public QObject {
@@ -16,6 +17,9 @@ public:
 
     void start();
     void stop();
+
+    signals:
+        void newShare(NearbyShareClient* client);
 
 private:
     NearbyShareServerPrivate* d;

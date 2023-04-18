@@ -17,6 +17,12 @@ public:
 
     static QString pinCodeFromAuthString(const QByteArray& authString);
 
+    void acceptTransfer();
+    void rejectTransfer();
+
+    signals:
+        void negotiationCompleted();
+
 private:
     NearbyShareClientPrivate* d;
 

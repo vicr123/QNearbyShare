@@ -69,4 +69,7 @@ void NearbyShareServer::acceptPendingConnection() {
     QTextStream(stdout) << "Pending connection accepted\n";
 
     auto ns = new NearbyShareClient(socket, true);
+    connect(ns, &NearbyShareClient::negotiationCompleted, this, [this, ns] {
+        emit newShare(ns);
+    });
 }

@@ -71,6 +71,8 @@ void NearbyShareClient::messageReceived(const NearbyPayloadPtr& payload) {
                 QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
             }
 
+            emit negotiationCompleted();
+
             break;
         }
         case sharing::nearby::V1Frame_FrameType_RESPONSE:
@@ -117,4 +119,34 @@ QString NearbyShareClient::pinCodeFromAuthString(const QByteArray& authString) {
     }
 
     return QString::number(abs(hash));
+}
+
+void NearbyShareClient::acceptTransfer() {
+    auto rsp = new sharing::nearby::ConnectionResponseFrame();
+    rsp->set_status(sharing::nearby::ConnectionResponseFrame_Status_ACCEPT);
+
+    auto v1 = new sharing::nearby::V1Frame();
+    v1->set_type(sharing::nearby::V1Frame_FrameType_RESPONSE);
+    v1->set_allocated_connection_response(rsp);
+
+    sharing::nearby::Frame nearbyFrame;
+    nearbyFrame.set_version(sharing::nearby::Frame_Version_V1);
+    nearbyFrame.set_allocated_v1(v1);
+
+    d->socket->sendPayloadPacket(nearbyFrame);
+}
+
+void NearbyShareClient::rejectTransfer() {
+    auto rsp = new sharing::nearby::ConnectionResponseFrame();
+    rsp->set_status(sharing::nearby::ConnectionResponseFrame_Status_REJECT);
+
+    auto v1 = new sharing::nearby::V1Frame();
+    v1->set_type(sharing::nearby::V1Frame_FrameType_RESPONSE);
+    v1->set_allocated_connection_response(rsp);
+
+    sharing::nearby::Frame nearbyFrame;
+    nearbyFrame.set_version(sharing::nearby::Frame_Version_V1);
+    nearbyFrame.set_allocated_v1(v1);
+
+    d->socket->sendPayloadPacket(nearbyFrame);
 }
