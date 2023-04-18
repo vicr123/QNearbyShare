@@ -27,6 +27,7 @@ struct NearbyShareServerPrivate {
 NearbyShareServer::NearbyShareServer() : QObject(nullptr) {
     d = new NearbyShareServerPrivate();
 
+    // TODO: Generate endpointId randomly?
     QString endpointId = "AHGE";
     d->serviceName.append("\x23");
     d->serviceName.append(endpointId.toUtf8());

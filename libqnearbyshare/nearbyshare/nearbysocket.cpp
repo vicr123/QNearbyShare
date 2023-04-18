@@ -20,6 +20,7 @@
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 
+#include "abstractnearbypayload.h"
 #include "cryptography.h"
 #include "endpointinfo.h"
 #include "nearbypayload.h"
@@ -59,7 +60,7 @@ struct NearbySocketPrivate {
     qint32 mySeq = 1;
 
     QTimer* keepaliveTimer;
-    QMap<quint64, NearbyPayloadPtr> pendingPayloads;
+    QMap<qint64, AbstractNearbyPayloadPtr> pendingPayloads;
 };
 
 NearbySocket::NearbySocket(QIODevice *ioDevice, QObject *parent) : QObject(parent) {
@@ -102,7 +103,7 @@ void NearbySocket::readBuffer() {
             d->packetLength = qFromBigEndian(*reinterpret_cast<quint32*>(packetLength.data()));
         }
 
-        while (d->packetLength > 0) {
+        while (d->packetLength > 0 && !d->buffer.atEnd()) {
             auto buf = d->buffer.read(d->packetLength);
             d->packetData.append(buf);
             d->packetLength -= buf.length();
@@ -467,11 +468,11 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
             const auto& payloadChunk = payloadTransfer.payload_chunk();
             auto id = payloadHeader.id();
 
-            NearbyPayloadPtr payload;
+            AbstractNearbyPayloadPtr payload;
             if (d->pendingPayloads.contains(id)) {
                 payload = d->pendingPayloads.value(id);
             } else {
-                payload = NearbyPayloadPtr(new NearbyPayload(id, payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
+                payload = AbstractNearbyPayloadPtr(new NearbyPayload(id, payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
                 d->pendingPayloads.insert(id, payload);
             }
 
@@ -491,6 +492,13 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
             } else {
                 sendKeepalive(true);
             }
+            break;
+        }
+        case location::nearby::connections::V1Frame_FrameType_DISCONNECTION: {
+            // TODO
+
+            QTextStream(stderr) << "Received DISCONNECTION frame\n";
+
             break;
         }
         default:
@@ -574,4 +582,8 @@ void NearbySocket::sendKeepalive(bool isAck) {
 
 QByteArray NearbySocket::authString() {
     return d->authString;
+}
+
+void NearbySocket::insertPendingPayload(qint64 id, const AbstractNearbyPayloadPtr& payload) {
+    d->pendingPayloads.insert(id, payload);
 }

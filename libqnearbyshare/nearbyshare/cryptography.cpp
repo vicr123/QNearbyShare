@@ -253,10 +253,10 @@ QByteArray Cryptography::bignumToBytes(BIGNUM *bn) {
      * 1001 -> 1000 -> 0111 -> -7
      */
 
-    if (numData.at(0) & 80) {
-        // Pad with 0 if not already padded
-        numData.prepend('\0');
-    }
+    // Pad with 0 if not already padded
+    numData.prepend('\0');
+//    if (numData.at(0) & 80) {
+//    }
 
     return numData;
 }

@@ -9,10 +9,15 @@
 #include "offline_wire_formats.pb.h"
 #include "nearbysocket.h"
 
+#include <QDir>
+#include <QStandardPaths>
 #include <QTextStream>
 
 struct NearbyShareClientPrivate {
-    NearbySocket* socket;
+    NearbySocket* socket = nullptr;
+    QList<NearbyShareClient::TransferredFile> files;
+
+    QMap<qint64, AbstractNearbyPayloadPtr> filePayloads;
 };
 
 NearbyShareClient::NearbyShareClient(QIODevice *ioDevice, bool receive, QObject *parent) : QObject(parent) {
@@ -43,54 +48,67 @@ void NearbyShareClient::readyForEncryptedMessages() {
     d->socket->sendPayloadPacket(nearbyFrame);
 }
 
-void NearbyShareClient::messageReceived(const NearbyPayloadPtr& payload) {
-    sharing::nearby::Frame nearbyFrame;
-    auto success = nearbyFrame.ParseFromString(payload->data().toStdString());
-    if (!success) {
-        QTextStream(stderr) << "Could not parse nearby frame\n";
-        return;
-    }
+void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr & payload) {
+    if (auto dataPayload = payload.objectCast<NearbyPayload>()) {
+        sharing::nearby::Frame nearbyFrame;
+        auto success = nearbyFrame.ParseFromString(dataPayload->data().toStdString());
+        if (!success) {
+            QTextStream(stderr) << "Could not parse nearby frame\n";
+            return;
+        }
 
-    if (nearbyFrame.version() != sharing::nearby::Frame_Version_V1) {
-        QTextStream(stderr) << "Received nearby frame version != 1\n";
-        return;
-    }
+        if (nearbyFrame.version() != sharing::nearby::Frame_Version_V1) {
+            QTextStream(stderr) << "Received nearby frame version != 1\n";
+            return;
+        }
 
-    auto v1 = nearbyFrame.v1();
-    switch (v1.type()) {
+        auto v1 = nearbyFrame.v1();
+        switch (v1.type()) {
 
-        case sharing::nearby::V1Frame_FrameType_UNKNOWN_FRAME_TYPE:
-            break;
-        case sharing::nearby::V1Frame_FrameType_INTRODUCTION: {
-            auto introduction = v1.introduction();
+            case sharing::nearby::V1Frame_FrameType_UNKNOWN_FRAME_TYPE:
+                break;
+            case sharing::nearby::V1Frame_FrameType_INTRODUCTION: {
+                const auto& introduction = v1.introduction();
 
-            QTextStream(stdout) << "Ready for transfer from remote device:\n";
-            QTextStream(stdout) << "PIN: " << pinCodeFromAuthString(d->socket->authString()) << "\n";
-            QTextStream(stdout) << "Incoming files:\n";
-            for (auto meta : introduction.file_metadata()) {
-                QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
+                QTextStream(stdout) << "Ready for transfer from remote device:\n";
+                QTextStream(stdout) << "PIN: " << pinCodeFromAuthString(d->socket->authString()) << "\n";
+                QTextStream(stdout) << "Incoming files:\n";
+
+                QDir downloads(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+                for (const auto& meta : introduction.file_metadata()) {
+                    TransferredFile tf;
+                    tf.id = meta.payload_id();
+                    tf.fileName = QString::fromStdString(meta.name());
+                    tf.size = meta.size();
+
+                    // TODO: Check for conflicts
+                    tf.destination = downloads.absoluteFilePath(tf.fileName);
+                    d->files.append(tf);
+
+                    QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
+                }
+
+                emit negotiationCompleted();
+
+                break;
             }
+            case sharing::nearby::V1Frame_FrameType_RESPONSE:
+                break;
+            case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION: {
+                auto pke = v1.paired_key_encryption();
 
-            emit negotiationCompleted();
+                // ???
+                sendPairedKeyEncryptionResponse();
 
-            break;
+                break;
+            }
+            case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_RESULT:
+                break;
+            case sharing::nearby::V1Frame_FrameType_CERTIFICATE_INFO:
+                break;
+            case sharing::nearby::V1Frame_FrameType_CANCEL:
+                break;
         }
-        case sharing::nearby::V1Frame_FrameType_RESPONSE:
-            break;
-        case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION: {
-            auto pke = v1.paired_key_encryption();
-
-            // ???
-            sendPairedKeyEncryptionResponse();
-
-            break;
-        }
-        case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_RESULT:
-            break;
-        case sharing::nearby::V1Frame_FrameType_CERTIFICATE_INFO:
-            break;
-        case sharing::nearby::V1Frame_FrameType_CANCEL:
-            break;
     }
 }
 
@@ -122,6 +140,17 @@ QString NearbyShareClient::pinCodeFromAuthString(const QByteArray& authString) {
 }
 
 void NearbyShareClient::acceptTransfer() {
+    // Create all the files to transfer
+    for (const auto& tf : d->files) {
+        auto outputFile = new QFile(tf.destination);
+        outputFile->open(QFile::WriteOnly);
+
+        auto payload = AbstractNearbyPayloadPtr(new AbstractNearbyPayload(tf.id, false));
+        payload->setOutput(outputFile);
+        d->filePayloads.insert(tf.id, payload);
+        d->socket->insertPendingPayload(tf.id, payload);
+    }
+
     auto rsp = new sharing::nearby::ConnectionResponseFrame();
     rsp->set_status(sharing::nearby::ConnectionResponseFrame_Status_ACCEPT);
 
@@ -133,6 +162,7 @@ void NearbyShareClient::acceptTransfer() {
     nearbyFrame.set_version(sharing::nearby::Frame_Version_V1);
     nearbyFrame.set_allocated_v1(v1);
 
+    QTextStream(stdout) << "Accepting transfer from remote device\n";
     d->socket->sendPayloadPacket(nearbyFrame);
 }
 
@@ -148,5 +178,20 @@ void NearbyShareClient::rejectTransfer() {
     nearbyFrame.set_version(sharing::nearby::Frame_Version_V1);
     nearbyFrame.set_allocated_v1(v1);
 
+    QTextStream(stdout) << "Rejecting transfer from remote device\n";
     d->socket->sendPayloadPacket(nearbyFrame);
+}
+
+QList<NearbyShareClient::TransferredFile> NearbyShareClient::filesToTransfer() {
+    auto files = d->files;
+
+    for (auto file : files) {
+        if (d->filePayloads.contains(file.id)) {
+            auto payload = d->filePayloads.value(file.id);
+            file.complete = payload->completed();
+            file.transferred = payload->bytesTransferred();
+        }
+    }
+
+    return files;
 }

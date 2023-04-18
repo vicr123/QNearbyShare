@@ -24,11 +24,13 @@ public:
     void sendPayloadPacket(const QByteArray& packet);
     void sendPayloadPacket(const google::protobuf::MessageLite& message);
 
+    void insertPendingPayload(qint64 id, const AbstractNearbyPayloadPtr& payload);
+
     QByteArray authString();
 
     signals:
         void readyForEncryptedMessages();
-        void messageReceived(NearbyPayloadPtr payload);
+        void messageReceived(AbstractNearbyPayloadPtr payload);
 
 private:
     NearbySocketPrivate * d;

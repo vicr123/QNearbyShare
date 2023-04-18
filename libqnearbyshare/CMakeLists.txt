@@ -7,6 +7,7 @@ set(SOURCES
         nearbyshare/endpointinfo.cpp
         nearbyshare/cryptography.cpp
         nearbyshare/nearbyshareclient.cpp
+        nearbyshare/abstractnearbypayload.cpp
         nearbyshare/nearbypayload.cpp
         )
 
@@ -16,6 +17,7 @@ set(HEADERS
         nearbyshare/endpointinfo.h
         nearbyshare/cryptography.h
         nearbyshare/nearbyshareclient.h
+        nearbyshare/abstractnearbypayload.h
         nearbyshare/nearbypayload.h
         )
 

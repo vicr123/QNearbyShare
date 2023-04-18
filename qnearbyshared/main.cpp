@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     server.start();
 
     QObject::connect(&server, &NearbyShareServer::newShare, [](NearbyShareClient* client) {
-        client->rejectTransfer();
+        client->acceptTransfer();
     });
 
     QTextStream(stdout) << "Server Running\n";

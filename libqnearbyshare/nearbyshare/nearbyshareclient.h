@@ -5,7 +5,7 @@
 #ifndef QNEARBYSHARE_NEARBYSHARECLIENT_H
 #define QNEARBYSHARE_NEARBYSHARECLIENT_H
 
-#include "nearbypayload.h"
+#include "abstractnearbypayload.h"
 #include <QObject>
 
 struct NearbyShareClientPrivate;
@@ -15,7 +15,19 @@ public:
     explicit NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent = nullptr);
     ~NearbyShareClient();
 
+    struct TransferredFile {
+        qint64 id;
+        QString fileName;
+        QString destination;
+        quint64 size;
+
+        quint64 transferred = 0;
+        bool complete = 0;
+    };
+
     static QString pinCodeFromAuthString(const QByteArray& authString);
+
+    QList<TransferredFile> filesToTransfer();
 
     void acceptTransfer();
     void rejectTransfer();
@@ -27,7 +39,7 @@ private:
     NearbyShareClientPrivate* d;
 
     void readyForEncryptedMessages();
-    void messageReceived(const NearbyPayloadPtr& payload);
+    void messageReceived(const AbstractNearbyPayloadPtr & payload);
 
     void sendPairedKeyEncryptionResponse();
 };
