@@ -29,9 +29,19 @@ EcKey *Cryptography::generateEcdsaKeyPair() {
 
     SecByteBlock sk(ecdh.PrivateKeyLength());
     SecByteBlock pk(ecdh.PublicKeyLength());
-    ecdh.GenerateKeyPair(prng, sk, pk);
 
-    return new EcKey{sk, pk};
+    do {
+        ecdh.GenerateKeyPair(prng, sk, pk);
+
+        DL_GroupParameters_EC<ECP> params(ASN1::secp256r1());
+        auto element = params.DecodeElement(pk, false);
+
+        // Android doesn't like it when the X and Y points are negative for some reason
+        if (!element.x.IsNegative() && !element.y.IsNegative()) {
+            return new EcKey{sk, pk};
+        }
+
+    } while (true);
 }
 
 QByteArray Cryptography::ecdsaX(EcKey *key) {
