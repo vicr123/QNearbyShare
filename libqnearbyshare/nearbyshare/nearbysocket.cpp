@@ -44,7 +44,7 @@ struct NearbySocketPrivate {
     State state = WaitingForConnectionRequest;
 
     QString remoteDeviceName;
-    EVP_PKEY* clientKey = nullptr;
+    EcKey* clientKey = nullptr;
     QByteArray clientInitMessage;
     QByteArray serverInitMessage;
     QByteArray clientHash;
@@ -78,7 +78,7 @@ NearbySocket::NearbySocket(QIODevice *ioDevice, QObject *parent) : QObject(paren
 
 NearbySocket::~NearbySocket() {
     if (d->clientKey != nullptr) {
-        EVP_PKEY_free(d->clientKey);
+        Cryptography::deleteEcdsaKeyPair(d->clientKey);
     }
     delete d;
 }
@@ -261,10 +261,9 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
 
                         auto ecP256PublicKey = new securemessage::EcP256PublicKey();
                         d->clientKey = Cryptography::generateEcdsaKeyPair();
-                        auto degree = Cryptography::ecdsaDegree(Cryptography::ecdsaGroupName(d->clientKey));
 
-                        ecP256PublicKey->set_x(Cryptography::ecdsaX(d->clientKey, degree).toStdString());
-                        ecP256PublicKey->set_y(Cryptography::ecdsaY(d->clientKey, degree).toStdString());
+                        ecP256PublicKey->set_x(Cryptography::ecdsaX(d->clientKey).toStdString());
+                        ecP256PublicKey->set_y(Cryptography::ecdsaY(d->clientKey).toStdString());
 
                         securemessage::GenericPublicKey publickey;
                         publickey.set_type(securemessage::EC_P256);

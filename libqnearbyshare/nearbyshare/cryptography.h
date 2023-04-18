@@ -8,21 +8,18 @@
 #include <QString>
 #include <openssl/evp.h>
 
+struct EcKey;
 namespace Cryptography {
     QByteArray randomBytes(qint64 length);
 
-    evp_pkey_st *generateEcdsaKeyPair();
-    QString ecdsaGroupName(evp_pkey_st* key);
-    int ecdsaDegree(const QString& group);
+    EcKey *generateEcdsaKeyPair();
+    void deleteEcdsaKeyPair(EcKey* key);
 
-    QByteArray bignumToBytes(BIGNUM* bn);
-    BIGNUM* bytesToBignum(QByteArray ba);
+    QByteArray ecdsaBignumParam(EcKey *key, const char *paramName, int degree);
+    QByteArray ecdsaX(EcKey* key);
+    QByteArray ecdsaY(EcKey* key);
 
-    QByteArray ecdsaBignumParam(evp_pkey_st *key, const char *paramName, int degree);
-    QByteArray ecdsaX(evp_pkey_st* key, int degree);
-    QByteArray ecdsaY(evp_pkey_st* key, int degree);
-
-    QByteArray diffieHellman(evp_pkey_st* ourKey, QByteArray peerX, QByteArray peerY);
+    QByteArray diffieHellman(EcKey* ourKey, QByteArray peerX, QByteArray peerY);
     QByteArray hkdfExtractExpand(const QByteArray& salt, const QByteArray& ikm, const QByteArray& info, size_t length);
 
     QByteArray aes256cbc(const QByteArray &input, const QByteArray &key, const QByteArray &iv, bool isEncrypt);
