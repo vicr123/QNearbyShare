@@ -12,6 +12,10 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Network DBus REQUIRED)
 
 enable_testing()
 
+add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE="com.vicr123.qnearbyshare")
+add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH="/com/vicr123/qnearbyshare")
+
 add_subdirectory(libqnearbyshare)
 add_subdirectory(qnearbyshared)
+add_subdirectory(qnearbyshare-receive)
 add_subdirectory(test)

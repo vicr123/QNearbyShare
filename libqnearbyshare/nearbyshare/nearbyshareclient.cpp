@@ -142,7 +142,7 @@ QString NearbyShareClient::pinCodeFromAuthString(const QByteArray& authString) {
         multiplier = (multiplier * 31) % 9973;
     }
 
-    return QString::number(abs(hash));
+    return QString::number(abs(hash)).rightJustified(4, '0');
 }
 
 void NearbyShareClient::acceptTransfer() {
