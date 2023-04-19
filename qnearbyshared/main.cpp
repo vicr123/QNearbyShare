@@ -1,17 +1,18 @@
 #include <QCoreApplication>
 #include <QTextStream>
 
-#include "nearbyshare/nearbyshareserver.h"
+#include <QDBusConnection>
+
+#include "dbus/dbusnearbysharemanager.h"
+#include "dbus/constants.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication a(argc, argv);
 
-    NearbyShareServer server;
-    server.start();
+    auto manager = new DBusNearbyShareManager();
 
-    QObject::connect(&server, &NearbyShareServer::newShare, [](NearbyShareClient* client) {
-        client->acceptTransfer();
-    });
+    QDBusConnection::sessionBus().registerObject(QNearbyShare::DBUS_ROOT_PATH, manager, QDBusConnection::ExportScriptableContents);
+    QDBusConnection::sessionBus().registerService(QNearbyShare::DBUS_SERVICE);
 
     QTextStream(stdout) << "Server Running\n";
 

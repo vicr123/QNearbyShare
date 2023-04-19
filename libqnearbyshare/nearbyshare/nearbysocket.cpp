@@ -39,11 +39,12 @@ struct NearbySocketPrivate {
         WaitingForUkey2ClientInit,
         WaitingForUkey2ClientFinish,
         WaitingForConnectionResponse,
-        Ready
+        Ready,
+        Closed
     };
     State state = WaitingForConnectionRequest;
 
-    QString remoteDeviceName;
+    QString peerName;
     EcKey* clientKey = nullptr;
     QByteArray clientInitMessage;
     QByteArray serverInitMessage;
@@ -74,6 +75,11 @@ NearbySocket::NearbySocket(QIODevice *ioDevice, QObject *parent) : QObject(paren
     });
 
     connect(d->io, &QIODevice::readyRead, this, &NearbySocket::readBuffer);
+    connect(d->io, &QIODevice::aboutToClose, this, [this] {
+        d->keepaliveTimer->stop();
+        d->state = NearbySocketPrivate::Closed;
+        emit disconnected();
+    });
 }
 
 NearbySocket::~NearbySocket() {
@@ -134,7 +140,7 @@ void NearbySocket::readBuffer() {
     d->buffer.setData(QByteArray());
 }
 
-void NearbySocket::processOfflineFrame(QByteArray frame) {
+void NearbySocket::processOfflineFrame(const QByteArray& frame) {
     location::nearby::connections::OfflineFrame offlineFrame;
     auto success = offlineFrame.ParseFromString(frame.toStdString());
     if (success) {
@@ -150,7 +156,7 @@ void NearbySocket::processOfflineFrame(QByteArray frame) {
                         if (d->state == NearbySocketPrivate::WaitingForConnectionRequest) {
                             const auto& connectionRequest = v1.connection_request();
                             auto info = EndpointInfo::fromByteArray(QByteArray::fromStdString(connectionRequest.endpoint_info()));
-                            d->remoteDeviceName = info.deviceName;
+                            d->peerName = info.deviceName;
                             QTextStream(stdout) << "Accepted connection from " << info.deviceName << "\n";
 
                             d->state = NearbySocketPrivate::WaitingForUkey2ClientInit;
@@ -206,7 +212,7 @@ void NearbySocket::processOfflineFrame(QByteArray frame) {
     // End the connection here
 }
 
-void NearbySocket::processUkey2Frame(QByteArray frame) {
+void NearbySocket::processUkey2Frame(const QByteArray& frame) {
     securegcm::Ukey2Alert::AlertType alertType = securegcm::Ukey2Alert_AlertType_BAD_MESSAGE;
 
     securegcm::Ukey2Message ukey2Message;
@@ -246,7 +252,7 @@ void NearbySocket::processUkey2Frame(QByteArray frame) {
                         }
 
                         QByteArray commitmentHash;
-                        for (auto commitment : clientInit.cipher_commitments()) {
+                        for (const auto& commitment : clientInit.cipher_commitments()) {
                             if (commitment.handshake_cipher() == securegcm::P256_SHA512) {
                                 commitmentHash = QByteArray::fromStdString(commitment.commitment());
                             }
@@ -494,9 +500,8 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
             break;
         }
         case location::nearby::connections::V1Frame_FrameType_DISCONNECTION: {
-            // TODO
-
             QTextStream(stderr) << "Received DISCONNECTION frame\n";
+            d->io->close();
 
             break;
         }
@@ -585,4 +590,12 @@ QByteArray NearbySocket::authString() {
 
 void NearbySocket::insertPendingPayload(qint64 id, const AbstractNearbyPayloadPtr& payload) {
     d->pendingPayloads.insert(id, payload);
+}
+
+QString NearbySocket::peerName() {
+    return d->peerName;
+}
+
+bool NearbySocket::active() {
+    return d->state != NearbySocketPrivate::Closed;
 }

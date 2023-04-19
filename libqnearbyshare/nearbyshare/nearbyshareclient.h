@@ -15,6 +15,14 @@ public:
     explicit NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent = nullptr);
     ~NearbyShareClient();
 
+    enum class State {
+        NotReady,
+        WaitingForUserAccept,
+        Transferring,
+        Complete,
+        Failed
+    };
+
     struct TransferredFile {
         qint64 id;
         QString fileName;
@@ -27,21 +35,28 @@ public:
 
     static QString pinCodeFromAuthString(const QByteArray& authString);
 
+    State state();
     QList<TransferredFile> filesToTransfer();
+    QString peerName();
+    QString pin();
 
     void acceptTransfer();
     void rejectTransfer();
 
     signals:
+        void stateChanged(State state);
         void negotiationCompleted();
+        void filesToTransferChanged();
 
 private:
     NearbyShareClientPrivate* d;
 
     void readyForEncryptedMessages();
     void messageReceived(const AbstractNearbyPayloadPtr & payload);
+    void setState(State state);
 
     void sendPairedKeyEncryptionResponse();
+    void checkIfComplete();
 };
 
 

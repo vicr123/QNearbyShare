@@ -18,6 +18,8 @@ public:
     explicit NearbySocket(QIODevice* ioDevice, QObject* parent = nullptr);
     ~NearbySocket();
 
+    bool active();
+
     void sendPacket(const QByteArray& packet);
     void sendPacket(const google::protobuf::MessageLite& message);
 
@@ -27,17 +29,19 @@ public:
     void insertPendingPayload(qint64 id, const AbstractNearbyPayloadPtr& payload);
 
     QByteArray authString();
+    QString peerName();
 
     signals:
         void readyForEncryptedMessages();
         void messageReceived(AbstractNearbyPayloadPtr payload);
+        void disconnected();
 
 private:
     NearbySocketPrivate * d;
 
     void readBuffer();
-    void processOfflineFrame(QByteArray frame);
-    void processUkey2Frame(QByteArray frame);
+    void processOfflineFrame(const QByteArray& frame);
+    void processUkey2Frame(const QByteArray& frame);
     void processSecureFrame(const QByteArray& frame);
     void sendKeepalive(bool isAck);
 

@@ -6,7 +6,6 @@
 
 #include "cryptography.h"
 #include "wire_format.pb.h"
-#include "offline_wire_formats.pb.h"
 #include "nearbysocket.h"
 
 #include <QDir>
@@ -18,6 +17,7 @@ struct NearbyShareClientPrivate {
     QList<NearbyShareClient::TransferredFile> files;
 
     QMap<qint64, AbstractNearbyPayloadPtr> filePayloads;
+    NearbyShareClient::State state = NearbyShareClient::State::NotReady;
 };
 
 NearbyShareClient::NearbyShareClient(QIODevice *ioDevice, bool receive, QObject *parent) : QObject(parent) {
@@ -26,6 +26,11 @@ NearbyShareClient::NearbyShareClient(QIODevice *ioDevice, bool receive, QObject 
 
     connect(d->socket, &NearbySocket::readyForEncryptedMessages, this, &NearbyShareClient::readyForEncryptedMessages);
     connect(d->socket, &NearbySocket::messageReceived, this, &NearbyShareClient::messageReceived);
+    connect(d->socket, &NearbySocket::disconnected, this, [this] {
+        if (d->state != State::Complete && d->state != State::Failed) {
+            setState(State::Failed);
+        }
+    });
 }
 
 NearbyShareClient::~NearbyShareClient() {
@@ -88,6 +93,7 @@ void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr & payload
                     QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
                 }
 
+                setState(State::WaitingForUserAccept);
                 emit negotiationCompleted();
 
                 break;
@@ -147,6 +153,12 @@ void NearbyShareClient::acceptTransfer() {
 
         auto payload = AbstractNearbyPayloadPtr(new AbstractNearbyPayload(tf.id, false));
         payload->setOutput(outputFile);
+        connect(payload.data(), &AbstractNearbyPayload::transferredChanged, this, &NearbyShareClient::filesToTransferChanged);
+        connect(payload.data(), &AbstractNearbyPayload::complete, this, [this] {
+            emit filesToTransferChanged();
+            emit checkIfComplete();
+        });
+
         d->filePayloads.insert(tf.id, payload);
         d->socket->insertPendingPayload(tf.id, payload);
     }
@@ -164,6 +176,8 @@ void NearbyShareClient::acceptTransfer() {
 
     QTextStream(stdout) << "Accepting transfer from remote device\n";
     d->socket->sendPayloadPacket(nearbyFrame);
+
+    setState(State::Transferring);
 }
 
 void NearbyShareClient::rejectTransfer() {
@@ -180,12 +194,14 @@ void NearbyShareClient::rejectTransfer() {
 
     QTextStream(stdout) << "Rejecting transfer from remote device\n";
     d->socket->sendPayloadPacket(nearbyFrame);
+
+    setState(State::Failed);
 }
 
 QList<NearbyShareClient::TransferredFile> NearbyShareClient::filesToTransfer() {
     auto files = d->files;
 
-    for (auto file : files) {
+    for (auto& file : files) {
         if (d->filePayloads.contains(file.id)) {
             auto payload = d->filePayloads.value(file.id);
             file.complete = payload->completed();
@@ -194,4 +210,30 @@ QList<NearbyShareClient::TransferredFile> NearbyShareClient::filesToTransfer() {
     }
 
     return files;
+}
+
+QString NearbyShareClient::pin() {
+    return pinCodeFromAuthString(d->socket->authString());
+}
+
+QString NearbyShareClient::peerName() {
+    return d->socket->peerName();
+}
+
+NearbyShareClient::State NearbyShareClient::state() {
+    return d->state;
+}
+
+void NearbyShareClient::setState(NearbyShareClient::State state) {
+    d->state = state;
+    emit stateChanged(state);
+}
+
+void NearbyShareClient::checkIfComplete() {
+    if (d->state != State::Transferring) return;
+    for (const auto& file : this->filesToTransfer()) {
+        if (!file.complete) return;
+    }
+
+    setState(State::Complete);
 }

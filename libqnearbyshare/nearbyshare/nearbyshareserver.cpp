@@ -63,6 +63,8 @@ void NearbyShareServer::stop() {
 
     d->tcp->close();
     d->tcp->deleteLater();
+
+    d->running = false;
 }
 
 void NearbyShareServer::acceptPendingConnection() {
@@ -73,4 +75,12 @@ void NearbyShareServer::acceptPendingConnection() {
     connect(ns, &NearbyShareClient::negotiationCompleted, this, [this, ns] {
         emit newShare(ns);
     });
+}
+
+QString NearbyShareServer::serverName() {
+    return QHostInfo::localHostName();
+}
+
+bool NearbyShareServer::running() {
+    return d->running;
 }

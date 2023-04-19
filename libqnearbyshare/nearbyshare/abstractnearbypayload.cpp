@@ -30,7 +30,7 @@ AbstractNearbyPayload::~AbstractNearbyPayload() {
 void AbstractNearbyPayload::setCompleted() {
     d->completed = true;
     d->output->close();
-    emit completed();
+    emit complete();
 }
 
 bool AbstractNearbyPayload::completed() {

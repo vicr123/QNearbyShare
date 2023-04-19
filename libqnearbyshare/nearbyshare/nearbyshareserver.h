@@ -15,8 +15,11 @@ public:
     NearbyShareServer();
     ~NearbyShareServer();
 
+    QString serverName();
+
     void start();
     void stop();
+    bool running();
 
     signals:
         void newShare(NearbyShareClient* client);
