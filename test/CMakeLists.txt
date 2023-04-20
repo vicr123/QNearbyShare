@@ -5,5 +5,5 @@ set(SOURCES
         )
 
 add_executable(tests ${SOURCES})
-target_include_directories(tests PRIVATE googletest/googletest/include googletest/googletest ../libqnearbyshare)
-target_link_libraries(tests libqnearbyshare gtest gtest_main)
+target_include_directories(tests PRIVATE googletest/googletest/include googletest/googletest ../libqnearbyshare-server)
+target_link_libraries(tests libqnearbyshare-server gtest gtest_main)

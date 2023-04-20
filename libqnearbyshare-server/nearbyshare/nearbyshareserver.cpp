@@ -23,12 +23,12 @@
  */
 
 #include "nearbyshareserver.h"
+#include "qzeroconf.h"
 #include <QHostInfo>
 #include <QRandomGenerator>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTextStream>
-#include <qzeroconf.h>
 
 #include "endpointinfo.h"
 

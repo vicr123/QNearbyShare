@@ -1,5 +1,5 @@
 [submodule "libqnearbyshare/QtZeroConf"]
-	path = libqnearbyshare/QtZeroConf
+	path = libqnearbyshare-server/QtZeroConf
 	url = https://github.com/jbagg/QtZeroConf.git
 [submodule "test/googletest"]
 	path = test/googletest

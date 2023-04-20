@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "../cryptography.h"
+#include "nearbyshare/cryptography.h"
 
 #include <QTextStream>
 #include <openssl/bn.h>
