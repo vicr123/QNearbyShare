@@ -25,22 +25,23 @@
 #include "nearbyshareclient.h"
 
 #include "cryptography.h"
-#include "wire_format.pb.h"
 #include "nearbysocket.h"
+#include "wire_format.pb.h"
 
 #include <QDir>
 #include <QStandardPaths>
 #include <QTextStream>
 
 struct NearbyShareClientPrivate {
-    NearbySocket* socket = nullptr;
-    QList<NearbyShareClient::TransferredFile> files;
+        NearbySocket* socket = nullptr;
+        QList<NearbyShareClient::TransferredFile> files;
 
-    QMap<qint64, AbstractNearbyPayloadPtr> filePayloads;
-    NearbyShareClient::State state = NearbyShareClient::State::NotReady;
+        QMap<qint64, AbstractNearbyPayloadPtr> filePayloads;
+        NearbyShareClient::State state = NearbyShareClient::State::NotReady;
 };
 
-NearbyShareClient::NearbyShareClient(QIODevice *ioDevice, bool receive, QObject *parent) : QObject(parent) {
+NearbyShareClient::NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent) :
+    QObject(parent) {
     d = new NearbyShareClientPrivate();
     d->socket = new NearbySocket(ioDevice, this);
 
@@ -73,7 +74,7 @@ void NearbyShareClient::readyForEncryptedMessages() {
     d->socket->sendPayloadPacket(nearbyFrame);
 }
 
-void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr & payload) {
+void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload) {
     if (auto dataPayload = payload.objectCast<NearbyPayload>()) {
         sharing::nearby::Frame nearbyFrame;
         auto success = nearbyFrame.ParseFromString(dataPayload->data().toStdString());
@@ -89,45 +90,46 @@ void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr & payload
 
         auto v1 = nearbyFrame.v1();
         switch (v1.type()) {
-
             case sharing::nearby::V1Frame_FrameType_UNKNOWN_FRAME_TYPE:
                 break;
-            case sharing::nearby::V1Frame_FrameType_INTRODUCTION: {
-                const auto& introduction = v1.introduction();
+            case sharing::nearby::V1Frame_FrameType_INTRODUCTION:
+                {
+                    const auto& introduction = v1.introduction();
 
-                QTextStream(stdout) << "Ready for transfer from remote device:\n";
-                QTextStream(stdout) << "PIN: " << pinCodeFromAuthString(d->socket->authString()) << "\n";
-                QTextStream(stdout) << "Incoming files:\n";
+                    QTextStream(stdout) << "Ready for transfer from remote device:\n";
+                    QTextStream(stdout) << "PIN: " << pinCodeFromAuthString(d->socket->authString()) << "\n";
+                    QTextStream(stdout) << "Incoming files:\n";
 
-                QDir downloads(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
-                for (const auto& meta : introduction.file_metadata()) {
-                    TransferredFile tf;
-                    tf.id = meta.payload_id();
-                    tf.fileName = QString::fromStdString(meta.name());
-                    tf.size = meta.size();
+                    QDir downloads(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+                    for (const auto& meta : introduction.file_metadata()) {
+                        TransferredFile tf;
+                        tf.id = meta.payload_id();
+                        tf.fileName = QString::fromStdString(meta.name());
+                        tf.size = meta.size();
 
-                    // TODO: Check for conflicts
-                    tf.destination = downloads.absoluteFilePath(tf.fileName);
-                    d->files.append(tf);
+                        // TODO: Check for conflicts
+                        tf.destination = downloads.absoluteFilePath(tf.fileName);
+                        d->files.append(tf);
 
-                    QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
+                        QTextStream(stdout) << "  " << QString::fromStdString(meta.name()) << "   len: " << meta.size() << "   mime: " << QString::fromStdString(meta.mime_type()) << "\n";
+                    }
+
+                    setState(State::WaitingForUserAccept);
+                    emit negotiationCompleted();
+
+                    break;
                 }
-
-                setState(State::WaitingForUserAccept);
-                emit negotiationCompleted();
-
-                break;
-            }
             case sharing::nearby::V1Frame_FrameType_RESPONSE:
                 break;
-            case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION: {
-                auto pke = v1.paired_key_encryption();
+            case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION:
+                {
+                    auto pke = v1.paired_key_encryption();
 
-                // ???
-                sendPairedKeyEncryptionResponse();
+                    // ???
+                    sendPairedKeyEncryptionResponse();
 
-                break;
-            }
+                    break;
+                }
             case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_RESULT:
                 break;
             case sharing::nearby::V1Frame_FrameType_CERTIFICATE_INFO:

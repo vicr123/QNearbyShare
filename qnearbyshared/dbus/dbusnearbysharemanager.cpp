@@ -31,17 +31,18 @@
 #include "dbusnearbysharesession.h"
 
 struct DBusNearbyShareManagerPrivate {
-    NearbyShareServer* server{};
+        NearbyShareServer* server{};
 
-    QList<QDBusObjectPath> sessions;
+        QList<QDBusObjectPath> sessions;
 
-    quint64 currentlyListening = 0;
+        quint64 currentlyListening = 0;
 
-    quint64 sessionNum = 0;
-    quint64 listenerNum = 0;
+        quint64 sessionNum = 0;
+        quint64 listenerNum = 0;
 };
 
-DBusNearbyShareManager::DBusNearbyShareManager(QObject *parent) : QObject(parent) {
+DBusNearbyShareManager::DBusNearbyShareManager(QObject* parent) :
+    QObject(parent) {
     d = new DBusNearbyShareManagerPrivate();
 
     d->server = new NearbyShareServer();
@@ -56,7 +57,7 @@ DBusNearbyShareManager::DBusNearbyShareManager(QObject *parent) : QObject(parent
         emit NewSession(QDBusObjectPath(path));
     });
 
-//    this->setRunning(true);
+    //    this->setRunning(true);
 
     connect(this, &DBusNearbyShareManager::isRunningChanged, this, [](bool isRunning) {
         DBusHelpers::emitPropertiesChangedSignal(QNearbyShare::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", "IsRunning", isRunning);
@@ -89,7 +90,7 @@ void DBusNearbyShareManager::setRunning(bool running) {
     return d->sessions;
 }
 
-QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage &message) {
+QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage& message) {
     auto path = QStringLiteral("%1/listeners/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->listenerNum);
     d->listenerNum++;
     d->currentlyListening++;

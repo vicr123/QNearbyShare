@@ -27,17 +27,17 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusMessage>
+#include <QDBusMetaType>
 #include <QLocale>
 #include <QSocketNotifier>
-#include <QDBusMetaType>
 
-#include <sys/ioctl.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 struct ReceiverPrivate {
-    QDBusInterface* manager{};
-    QDBusInterface* session{};
+        QDBusInterface* manager{};
+        QDBusInterface* session{};
 };
 
 QDBusArgument& operator<<(QDBusArgument& argument, const TransferProgress& transferProgress) {
@@ -54,7 +54,8 @@ const QDBusArgument& operator>>(const QDBusArgument& argument, TransferProgress&
     return argument;
 }
 
-Receiver::Receiver(QObject *parent) : QObject(parent) {
+Receiver::Receiver(QObject* parent) :
+    QObject(parent) {
     d = new ReceiverPrivate();
     d->manager = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager");
 
@@ -83,7 +84,7 @@ bool Receiver::startListening() {
 
 void Receiver::newSession(QDBusObjectPath path) { // NOLINT(performance-unnecessary-value-param)
     d->session = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, path.path(), QNEARBYSHARE_DBUS_SERVICE ".Session");
-    QDBusConnection::sessionBus().connect(QNEARBYSHARE_DBUS_SERVICE, path.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString,QVariantMap,QStringList)));
+    QDBusConnection::sessionBus().connect(QNEARBYSHARE_DBUS_SERVICE, path.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString, QVariantMap, QStringList)));
 
     auto transfers = this->transfers();
 
@@ -107,11 +108,13 @@ void Receiver::newSession(QDBusObjectPath path) { // NOLINT(performance-unnecess
 
     QTextStream(stderr) << "\n";
 
-    this->question(tr("Proceed with transfer?"), [this] {
-        acceptTransfer();
-    }, [this] {
-                rejectTransfer();
-            });
+    this->question(
+        tr("Proceed with transfer?"), [this] {
+            acceptTransfer();
+        },
+        [this] {
+        rejectTransfer();
+        });
 }
 
 void Receiver::sessionPropertiesChanged(QString interface, QVariantMap properties, QStringList changedProperties) {

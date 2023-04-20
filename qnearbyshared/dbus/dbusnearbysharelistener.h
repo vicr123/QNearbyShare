@@ -31,23 +31,22 @@
 
 struct DBusNearbyShareListenerPrivate;
 class DBusNearbyShareListener : public QObject {
-    Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".Listener")
-public:
-    explicit DBusNearbyShareListener(QString service, QString path, QObject* parent);
-    ~DBusNearbyShareListener();
+        Q_OBJECT
+        Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".Listener")
+    public:
+        explicit DBusNearbyShareListener(QString service, QString path, QObject* parent);
+        ~DBusNearbyShareListener();
 
-public slots:
-    Q_SCRIPTABLE void StopListening(const QDBusMessage& message);
+    public slots:
+        Q_SCRIPTABLE void StopListening(const QDBusMessage& message);
 
     signals:
         void stoppedListening();
 
-private:
-    DBusNearbyShareListenerPrivate* d;
+    private:
+        DBusNearbyShareListenerPrivate* d;
 
-    void stopListening();
+        void stopListening();
 };
 
-
-#endif//QNEARBYSHARE_DBUSNEARBYSHARELISTENER_H
+#endif // QNEARBYSHARE_DBUSNEARBYSHARELISTENER_H

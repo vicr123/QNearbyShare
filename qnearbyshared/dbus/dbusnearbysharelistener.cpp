@@ -27,12 +27,13 @@
 #include <QDBusServiceWatcher>
 
 struct DBusNearbyShareListenerPrivate {
-    QString service;
-    QString path;
-    QDBusServiceWatcher watcher;
+        QString service;
+        QString path;
+        QDBusServiceWatcher watcher;
 };
 
-DBusNearbyShareListener::DBusNearbyShareListener(QString service, QString path, QObject *parent) : QObject(parent) {
+DBusNearbyShareListener::DBusNearbyShareListener(QString service, QString path, QObject* parent) :
+    QObject(parent) {
     d = new DBusNearbyShareListenerPrivate();
     d->path = path;
     d->service = service;
@@ -48,7 +49,7 @@ DBusNearbyShareListener::~DBusNearbyShareListener() {
     delete d;
 }
 
-void DBusNearbyShareListener::StopListening(const QDBusMessage &message) {
+void DBusNearbyShareListener::StopListening(const QDBusMessage& message) {
     if (message.service() != d->service) {
         return;
     }
@@ -60,4 +61,3 @@ void DBusNearbyShareListener::stopListening() {
     emit stoppedListening();
     this->deleteLater();
 }
-

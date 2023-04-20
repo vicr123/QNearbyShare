@@ -22,15 +22,16 @@
  * SOFTWARE.
  */
 
+#include "nearbypayload.h"
 #include <QBuffer>
 #include <QTextStream>
-#include "nearbypayload.h"
 
 struct NearbyPayloadPrivate {
-    QBuffer* buffer;
+        QBuffer* buffer;
 };
 
-NearbyPayload::NearbyPayload(qint64 id, bool isBytes) : AbstractNearbyPayload(id, isBytes) {
+NearbyPayload::NearbyPayload(qint64 id, bool isBytes) :
+    AbstractNearbyPayload(id, isBytes) {
     d = new NearbyPayloadPrivate();
 
     d->buffer = new QBuffer();

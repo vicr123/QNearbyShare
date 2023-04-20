@@ -24,15 +24,15 @@
 
 #include "dbusnearbysharesession.h"
 
-#include <ranges>
-#include <nearbyshare/nearbyshareclient.h>
 #include "dbushelpers.h"
 #include <QDBusMetaType>
+#include <nearbyshare/nearbyshareclient.h>
+#include <ranges>
 
 struct DBusNearbyShareSessionPrivate {
-    NearbyShareClient* client;
+        NearbyShareClient* client;
 
-    static QString NearbyShareClientStateToString(NearbyShareClient::State state);
+        static QString NearbyShareClientStateToString(NearbyShareClient::State state);
 };
 
 QString DBusNearbyShareSessionPrivate::NearbyShareClientStateToString(NearbyShareClient::State state) {
@@ -65,7 +65,8 @@ const QDBusArgument& operator>>(const QDBusArgument& argument, TransferProgress&
     return argument;
 }
 
-DBusNearbyShareSession::DBusNearbyShareSession(NearbyShareClient* client, const QString& path, QObject *parent) : QObject(parent) {
+DBusNearbyShareSession::DBusNearbyShareSession(NearbyShareClient* client, const QString& path, QObject* parent) :
+    QObject(parent) {
     d = new DBusNearbyShareSessionPrivate();
     d->client = client;
 
@@ -88,7 +89,7 @@ QString DBusNearbyShareSession::peerName() {
     return d->client->peerName();
 }
 
-[[maybe_unused]] void DBusNearbyShareSession::AcceptTransfer(const QDBusMessage &message) {
+[[maybe_unused]] void DBusNearbyShareSession::AcceptTransfer(const QDBusMessage& message) {
     if (d->client->state() != NearbyShareClient::State::WaitingForUserAccept) {
         message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_STATE, "Can't accept a transfer that isn't pending user acceptance");
         return;
@@ -96,7 +97,7 @@ QString DBusNearbyShareSession::peerName() {
     d->client->acceptTransfer();
 }
 
-[[maybe_unused]] void DBusNearbyShareSession::RejectTransfer(const QDBusMessage &message) {
+[[maybe_unused]] void DBusNearbyShareSession::RejectTransfer(const QDBusMessage& message) {
     if (d->client->state() != NearbyShareClient::State::WaitingForUserAccept) {
         message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_STATE, "Can't accept a transfer that isn't pending user acceptance");
         return;

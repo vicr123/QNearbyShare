@@ -31,15 +31,15 @@
 
 struct NearbyPayloadPrivate;
 class NearbyPayload : public AbstractNearbyPayload {
-    Q_OBJECT
-public:
-    explicit NearbyPayload(qint64 id, bool isBytes);
-    ~NearbyPayload();
+        Q_OBJECT
+    public:
+        explicit NearbyPayload(qint64 id, bool isBytes);
+        ~NearbyPayload();
 
-    QByteArray data();
+        QByteArray data();
 
-private:
-    NearbyPayloadPrivate* d;
+    private:
+        NearbyPayloadPrivate* d;
 };
 
-#endif//QNEARBYSHARE_NEARBYPAYLOAD_H
+#endif // QNEARBYSHARE_NEARBYPAYLOAD_H

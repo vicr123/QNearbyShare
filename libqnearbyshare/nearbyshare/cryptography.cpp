@@ -23,8 +23,8 @@
  */
 
 #include "cryptography.h"
-#include <QRandomGenerator>
 #include <QMessageAuthenticationCode>
+#include <QRandomGenerator>
 #include <QTextStream>
 
 QByteArray Cryptography::randomBytes(qint64 length) {
@@ -36,15 +36,15 @@ QByteArray Cryptography::randomBytes(qint64 length) {
     return bytes;
 }
 
-QByteArray Cryptography::hmacSha256Signature(const QByteArray &data, const QByteArray &key) {
+QByteArray Cryptography::hmacSha256Signature(const QByteArray& data, const QByteArray& key) {
     QMessageAuthenticationCode code(QCryptographicHash::Sha256, key);
     code.addData(data);
     return code.result();
 }
-QByteArray Cryptography::aes256cbcDecrypt(const QByteArray &ciphertext, const QByteArray &key, const QByteArray &iv) {
+QByteArray Cryptography::aes256cbcDecrypt(const QByteArray& ciphertext, const QByteArray& key, const QByteArray& iv) {
     return aes256cbc(ciphertext, key, iv, false);
 }
 
-QByteArray Cryptography::aes256cbcEncrypt(const QByteArray &plaintext, const QByteArray &key, const QByteArray &iv) {
+QByteArray Cryptography::aes256cbcEncrypt(const QByteArray& plaintext, const QByteArray& key, const QByteArray& iv) {
     return aes256cbc(plaintext, key, iv, true);
 }

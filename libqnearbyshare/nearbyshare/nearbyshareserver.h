@@ -25,30 +25,29 @@
 #ifndef QNEARBYSHARE_NEARBYSHARESERVER_H
 #define QNEARBYSHARE_NEARBYSHARESERVER_H
 
-#include <QObject>
 #include "nearbyshareclient.h"
+#include <QObject>
 
 struct NearbyShareServerPrivate;
 class NearbyShareServer : public QObject {
-    Q_OBJECT
-public:
-    NearbyShareServer();
-    ~NearbyShareServer();
+        Q_OBJECT
+    public:
+        NearbyShareServer();
+        ~NearbyShareServer();
 
-    QString serverName();
+        QString serverName();
 
-    void start();
-    void stop();
-    bool running();
+        void start();
+        void stop();
+        bool running();
 
     signals:
         void newShare(NearbyShareClient* client);
 
-private:
-    NearbyShareServerPrivate* d;
+    private:
+        NearbyShareServerPrivate* d;
 
-    void acceptPendingConnection();
+        void acceptPendingConnection();
 };
 
-
-#endif//QNEARBYSHARE_NEARBYSHARESERVER_H
+#endif // QNEARBYSHARE_NEARBYSHARESERVER_H

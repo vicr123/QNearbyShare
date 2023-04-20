@@ -23,12 +23,12 @@
  */
 
 #include "nearbyshareserver.h"
-#include <qzeroconf.h>
-#include <QTcpServer>
-#include <QRandomGenerator>
 #include <QHostInfo>
-#include <QTextStream>
+#include <QRandomGenerator>
+#include <QTcpServer>
 #include <QTcpSocket>
+#include <QTextStream>
+#include <qzeroconf.h>
 
 #include "endpointinfo.h"
 
@@ -37,14 +37,15 @@
 #include "nearbyshareclient.h"
 
 struct NearbyShareServerPrivate {
-    bool running = false;
+        bool running = false;
 
-    QTcpServer* tcp;
-    QZeroConf zeroconf;
-    QByteArray serviceName;
+        QTcpServer* tcp;
+        QZeroConf zeroconf;
+        QByteArray serviceName;
 };
 
-NearbyShareServer::NearbyShareServer() : QObject(nullptr) {
+NearbyShareServer::NearbyShareServer() :
+    QObject(nullptr) {
     d = new NearbyShareServerPrivate();
 
     // TODO: Generate endpointId randomly?

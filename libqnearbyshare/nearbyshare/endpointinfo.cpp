@@ -41,11 +41,10 @@ EndpointInfo EndpointInfo::fromByteArray(const QByteArray& data) {
     info.deviceName = data.mid(18, deviceNameLength);
 
     return info;
-
 }
 QByteArray EndpointInfo::toByteArray() {
     uchar byte1 = version << 5 |
-            (visible ? 0b00000000 : 0b00010000) |
+                  (visible ? 0b00000000 : 0b00010000) |
                   (deviceType & 0b00000111) << 1;
 
     QByteArray endpointInfo;

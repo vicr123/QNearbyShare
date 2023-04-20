@@ -22,13 +22,13 @@
  * SOFTWARE.
  */
 
-#include <QCoreApplication>
-#include <QTextStream>
-#include <QCommandLineParser>
-#include <QDBusConnection>
 #include "receiver.h"
+#include <QCommandLineParser>
+#include <QCoreApplication>
+#include <QDBusConnection>
+#include <QTextStream>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     QCoreApplication a(argc, argv);
     a.setApplicationName("qnearbyshare-receive");
 

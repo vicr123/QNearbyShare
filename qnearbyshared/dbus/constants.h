@@ -32,6 +32,6 @@ namespace QNearbyShare {
     const QString DBUS_ROOT_PATH = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH);
 
     const QString DBUS_ERROR_INVALID_STATE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidState");
-}
+} // namespace QNearbyShare
 
-#endif//QNEARBYSHARE_CONSTANTS_H
+#endif // QNEARBYSHARE_CONSTANTS_H

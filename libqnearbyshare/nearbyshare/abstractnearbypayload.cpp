@@ -23,17 +23,16 @@
  */
 
 #include "abstractnearbypayload.h"
-#include "nearbypayload.h"
-#include <QTextStream>
 #include <QIODevice>
+#include <QTextStream>
 
 struct AbstractNearbyPayloadPrivate {
-    qint64 id;
-    bool isBytes;
+        qint64 id;
+        bool isBytes;
 
-    QIODevice* output;
-    quint64 read = 0;
-    bool completed = false;
+        QIODevice* output;
+        quint64 read = 0;
+        bool completed = false;
 };
 
 AbstractNearbyPayload::AbstractNearbyPayload(qint64 id, bool isBytes) {
@@ -65,7 +64,7 @@ qint64 AbstractNearbyPayload::id() {
     return d->id;
 }
 
-void AbstractNearbyPayload::loadChunk(quint64 offset, const QByteArray &body) {
+void AbstractNearbyPayload::loadChunk(quint64 offset, const QByteArray& body) {
     if (d->read != offset) {
         // Stop!
         QTextStream(stderr) << "Nearby Payload offset jumped unexpectedly\n";
@@ -76,7 +75,7 @@ void AbstractNearbyPayload::loadChunk(quint64 offset, const QByteArray &body) {
     emit transferredChanged();
 }
 
-void AbstractNearbyPayload::setOutput(QIODevice *output) {
+void AbstractNearbyPayload::setOutput(QIODevice* output) {
     d->output = output;
 }
 

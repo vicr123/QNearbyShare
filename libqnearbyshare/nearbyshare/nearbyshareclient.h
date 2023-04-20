@@ -30,54 +30,53 @@
 
 struct NearbyShareClientPrivate;
 class NearbyShareClient : public QObject {
-    Q_OBJECT
-public:
-    explicit NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent = nullptr);
-    ~NearbyShareClient();
+        Q_OBJECT
+    public:
+        explicit NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent = nullptr);
+        ~NearbyShareClient();
 
-    enum class State {
-        NotReady,
-        WaitingForUserAccept,
-        Transferring,
-        Complete,
-        Failed
-    };
+        enum class State {
+            NotReady,
+            WaitingForUserAccept,
+            Transferring,
+            Complete,
+            Failed
+        };
 
-    struct TransferredFile {
-        qint64 id;
-        QString fileName;
-        QString destination;
-        quint64 size;
+        struct TransferredFile {
+                qint64 id;
+                QString fileName;
+                QString destination;
+                quint64 size;
 
-        quint64 transferred = 0;
-        bool complete = 0;
-    };
+                quint64 transferred = 0;
+                bool complete = 0;
+        };
 
-    static QString pinCodeFromAuthString(const QByteArray& authString);
+        static QString pinCodeFromAuthString(const QByteArray& authString);
 
-    State state();
-    QList<TransferredFile> filesToTransfer();
-    QString peerName();
-    QString pin();
+        State state();
+        QList<TransferredFile> filesToTransfer();
+        QString peerName();
+        QString pin();
 
-    void acceptTransfer();
-    void rejectTransfer();
+        void acceptTransfer();
+        void rejectTransfer();
 
     signals:
         void stateChanged(State state);
         void negotiationCompleted();
         void filesToTransferChanged();
 
-private:
-    NearbyShareClientPrivate* d;
+    private:
+        NearbyShareClientPrivate* d;
 
-    void readyForEncryptedMessages();
-    void messageReceived(const AbstractNearbyPayloadPtr & payload);
-    void setState(State state);
+        void readyForEncryptedMessages();
+        void messageReceived(const AbstractNearbyPayloadPtr& payload);
+        void setState(State state);
 
-    void sendPairedKeyEncryptionResponse();
-    void checkIfComplete();
+        void sendPairedKeyEncryptionResponse();
+        void checkIfComplete();
 };
 
-
-#endif//QNEARBYSHARE_NEARBYSHARECLIENT_H
+#endif // QNEARBYSHARE_NEARBYSHARECLIENT_H

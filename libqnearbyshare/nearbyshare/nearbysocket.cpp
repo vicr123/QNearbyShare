@@ -24,18 +24,18 @@
 
 #include "nearbysocket.h"
 
-#include "offline_wire_formats.pb.h"
-#include "ukey.pb.h"
-#include "securemessage.pb.h"
 #include "device_to_device_messages.pb.h"
+#include "offline_wire_formats.pb.h"
+#include "securemessage.pb.h"
+#include "ukey.pb.h"
 #include <QBuffer>
-#include <QIODevice>
-#include <QTextStream>
-#include <QtEndian>
 #include <QCryptographicHash>
+#include <QIODevice>
 #include <QMap>
 #include <QRandomGenerator64>
+#include <QTextStream>
 #include <QTimer>
+#include <QtEndian>
 
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -47,44 +47,45 @@
 #include "securegcm.pb.h"
 
 struct NearbySocketPrivate {
-    QIODevice* io = nullptr;
+        QIODevice* io = nullptr;
 
-    QBuffer buffer;
+        QBuffer buffer;
 
-    quint32 packetLength = 0;
-    QByteArray packetData;
+        quint32 packetLength = 0;
+        QByteArray packetData;
 
-    enum State {
-        WaitingForConnectionRequest,
-        WaitingForUkey2ClientInit,
-        WaitingForUkey2ClientFinish,
-        WaitingForConnectionResponse,
-        Ready,
-        Closed
-    };
-    State state = WaitingForConnectionRequest;
+        enum State {
+            WaitingForConnectionRequest,
+            WaitingForUkey2ClientInit,
+            WaitingForUkey2ClientFinish,
+            WaitingForConnectionResponse,
+            Ready,
+            Closed
+        };
+        State state = WaitingForConnectionRequest;
 
-    QString peerName;
-    EcKey* clientKey = nullptr;
-    QByteArray clientInitMessage;
-    QByteArray serverInitMessage;
-    QByteArray clientHash;
+        QString peerName;
+        EcKey* clientKey = nullptr;
+        QByteArray clientInitMessage;
+        QByteArray serverInitMessage;
+        QByteArray clientHash;
 
-    bool isServer = true;
-    QByteArray decryptKey;
-    QByteArray receiveHmacKey;
-    QByteArray encryptKey;
-    QByteArray sendHmacKey;
-    QByteArray authString;
+        bool isServer = true;
+        QByteArray decryptKey;
+        QByteArray receiveHmacKey;
+        QByteArray encryptKey;
+        QByteArray sendHmacKey;
+        QByteArray authString;
 
-    qint32 peerSeq = 0;
-    qint32 mySeq = 1;
+        qint32 peerSeq = 0;
+        qint32 mySeq = 1;
 
-    QTimer* keepaliveTimer;
-    QMap<qint64, AbstractNearbyPayloadPtr> pendingPayloads;
+        QTimer* keepaliveTimer;
+        QMap<qint64, AbstractNearbyPayloadPtr> pendingPayloads;
 };
 
-NearbySocket::NearbySocket(QIODevice *ioDevice, QObject *parent) : QObject(parent) {
+NearbySocket::NearbySocket(QIODevice* ioDevice, QObject* parent) :
+    QObject(parent) {
     d = new NearbySocketPrivate();
     d->io = ioDevice;
 
@@ -136,7 +137,7 @@ void NearbySocket::readBuffer() {
         }
 
         if (d->packetLength == 0) {
-            //We have the entire packet now
+            // We have the entire packet now
 
             switch (d->state) {
                 case NearbySocketPrivate::WaitingForConnectionRequest:
@@ -165,64 +166,64 @@ void NearbySocket::processOfflineFrame(const QByteArray& frame) {
     auto success = offlineFrame.ParseFromString(frame.toStdString());
     if (success) {
         switch (offlineFrame.version()) {
-            case location::nearby::connections::OfflineFrame_Version_V1: {
-                auto v1 = offlineFrame.v1();
+            case location::nearby::connections::OfflineFrame_Version_V1:
+                {
+                    auto v1 = offlineFrame.v1();
 
-                switch (v1.type()) {
+                    switch (v1.type()) {
+                        case location::nearby::connections::V1Frame_FrameType_UNKNOWN_FRAME_TYPE:
+                            break;
+                        case location::nearby::connections::V1Frame_FrameType_CONNECTION_REQUEST:
+                            if (d->state == NearbySocketPrivate::WaitingForConnectionRequest) {
+                                const auto& connectionRequest = v1.connection_request();
+                                auto info = EndpointInfo::fromByteArray(QByteArray::fromStdString(connectionRequest.endpoint_info()));
+                                d->peerName = info.deviceName;
+                                QTextStream(stdout) << "Accepted connection from " << info.deviceName << "\n";
 
-                    case location::nearby::connections::V1Frame_FrameType_UNKNOWN_FRAME_TYPE:
-                        break;
-                    case location::nearby::connections::V1Frame_FrameType_CONNECTION_REQUEST:
-                        if (d->state == NearbySocketPrivate::WaitingForConnectionRequest) {
-                            const auto& connectionRequest = v1.connection_request();
-                            auto info = EndpointInfo::fromByteArray(QByteArray::fromStdString(connectionRequest.endpoint_info()));
-                            d->peerName = info.deviceName;
-                            QTextStream(stdout) << "Accepted connection from " << info.deviceName << "\n";
-
-                            d->state = NearbySocketPrivate::WaitingForUkey2ClientInit;
-                            return;
-                        }
-                        break;
-                    case location::nearby::connections::V1Frame_FrameType_CONNECTION_RESPONSE:
-                        if (d->state == NearbySocketPrivate::WaitingForConnectionResponse) {
-                            const auto& connectionResponse = v1.connection_response();
-                            if (connectionResponse.response() != location::nearby::connections::ConnectionResponseFrame_ResponseStatus_ACCEPT) {
-                                QTextStream(stdout) << "Client did not accept the connection\n";
+                                d->state = NearbySocketPrivate::WaitingForUkey2ClientInit;
                                 return;
                             }
+                            break;
+                        case location::nearby::connections::V1Frame_FrameType_CONNECTION_RESPONSE:
+                            if (d->state == NearbySocketPrivate::WaitingForConnectionResponse) {
+                                const auto& connectionResponse = v1.connection_response();
+                                if (connectionResponse.response() != location::nearby::connections::ConnectionResponseFrame_ResponseStatus_ACCEPT) {
+                                    QTextStream(stdout) << "Client did not accept the connection\n";
+                                    return;
+                                }
 
-                            //Send Connection Response
-                            auto osInfo = new location::nearby::connections::OsInfo();
-                            osInfo->set_type(location::nearby::connections::OsInfo_OsType_LINUX); // TODO: Update to make this correct
+                                // Send Connection Response
+                                auto osInfo = new location::nearby::connections::OsInfo();
+                                osInfo->set_type(location::nearby::connections::OsInfo_OsType_LINUX); // TODO: Update to make this correct
 
-                            auto response = new location::nearby::connections::ConnectionResponseFrame();
-                            response->set_response(location::nearby::connections::ConnectionResponseFrame_ResponseStatus_ACCEPT);
-                            response->set_allocated_os_info(osInfo);
+                                auto response = new location::nearby::connections::ConnectionResponseFrame();
+                                response->set_response(location::nearby::connections::ConnectionResponseFrame_ResponseStatus_ACCEPT);
+                                response->set_allocated_os_info(osInfo);
 
-                            auto v1Response = new location::nearby::connections::V1Frame();
-                            v1Response->set_type(location::nearby::connections::V1Frame_FrameType_CONNECTION_RESPONSE);
-                            v1Response->set_allocated_connection_response(response);
+                                auto v1Response = new location::nearby::connections::V1Frame();
+                                v1Response->set_type(location::nearby::connections::V1Frame_FrameType_CONNECTION_RESPONSE);
+                                v1Response->set_allocated_connection_response(response);
 
-                            location::nearby::connections::OfflineFrame offlineResponse;
-                            offlineResponse.set_version(location::nearby::connections::OfflineFrame_Version_V1);
-                            offlineResponse.set_allocated_v1(v1Response);
-                            sendPacket(offlineResponse);
+                                location::nearby::connections::OfflineFrame offlineResponse;
+                                offlineResponse.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+                                offlineResponse.set_allocated_v1(v1Response);
+                                sendPacket(offlineResponse);
 
-                            d->state = NearbySocketPrivate::Ready;
-                            d->keepaliveTimer->start();
+                                d->state = NearbySocketPrivate::Ready;
+                                d->keepaliveTimer->start();
 
-                            emit readyForEncryptedMessages();
-                        }
-                        break;
-                    case location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER:
-                    case location::nearby::connections::V1Frame_FrameType_BANDWIDTH_UPGRADE_NEGOTIATION:
-                    case location::nearby::connections::V1Frame_FrameType_KEEP_ALIVE:
-                    case location::nearby::connections::V1Frame_FrameType_DISCONNECTION:
-                    case location::nearby::connections::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION:
-                        break;
+                                emit readyForEncryptedMessages();
+                            }
+                            break;
+                        case location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER:
+                        case location::nearby::connections::V1Frame_FrameType_BANDWIDTH_UPGRADE_NEGOTIATION:
+                        case location::nearby::connections::V1Frame_FrameType_KEEP_ALIVE:
+                        case location::nearby::connections::V1Frame_FrameType_DISCONNECTION:
+                        case location::nearby::connections::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION:
+                            break;
+                    }
+                    break;
                 }
-                break;
-            }
             case location::nearby::connections::OfflineFrame_Version_UNKNOWN_VERSION:
                 break;
         }
@@ -241,136 +242,138 @@ void NearbySocket::processUkey2Frame(const QByteArray& frame) {
         switch (ukey2Message.message_type()) {
             case securegcm::Ukey2Message_Type_UNKNOWN_DO_NOT_USE:
                 break;
-            case securegcm::Ukey2Message_Type_ALERT: {
-                securegcm::Ukey2Alert alert;
-                alert.ParseFromString(frame.toStdString());
-                break;
-            }
-            case securegcm::Ukey2Message_Type_CLIENT_INIT: {
-                if (d->state == NearbySocketPrivate::WaitingForUkey2ClientInit) {
-                    securegcm::Ukey2ClientInit clientInit;
-                    auto success = clientInit.ParseFromString(ukey2Message.message_data());
-                    if (success) {
-                        d->clientInitMessage = frame;
-
-                        if (clientInit.version() != 1) {
-                            alertType = securegcm::Ukey2Alert_AlertType_BAD_VERSION;
-                            QTextStream(stderr) << "Handshake failed due to bad version\n";
-                            break;
-                        }
-
-                        if (clientInit.random().length() != 32) {
-                            alertType = securegcm::Ukey2Alert_AlertType_BAD_RANDOM;
-                            QTextStream(stderr) << "Handshake failed due to bad random\n";
-                            break;
-                        }
-
-                        if (QString::fromStdString(clientInit.next_protocol()) != "AES_256_CBC-HMAC_SHA256") {
-                            alertType = securegcm::Ukey2Alert_AlertType_BAD_NEXT_PROTOCOL;
-                            QTextStream(stderr) << "Handshake failed due to bad next protocol\n";
-                            break;
-                        }
-
-                        QByteArray commitmentHash;
-                        for (const auto& commitment : clientInit.cipher_commitments()) {
-                            if (commitment.handshake_cipher() == securegcm::P256_SHA512) {
-                                commitmentHash = QByteArray::fromStdString(commitment.commitment());
-                            }
-                        }
-                        if (commitmentHash.isEmpty()) {
-                            alertType = securegcm::Ukey2Alert_AlertType_BAD_HANDSHAKE_CIPHER;
-                            QTextStream(stderr) << "Handshake failed due to unsupported handshake commitments\n";
-                            break;
-                        }
-                        d->clientHash = commitmentHash;
-
-
-                        auto ecP256PublicKey = new securemessage::EcP256PublicKey();
-                        d->clientKey = Cryptography::generateEcdsaKeyPair();
-
-                        ecP256PublicKey->set_x(Cryptography::ecdsaX(d->clientKey).toStdString());
-                        ecP256PublicKey->set_y(Cryptography::ecdsaY(d->clientKey).toStdString());
-
-                        securemessage::GenericPublicKey publickey;
-                        publickey.set_type(securemessage::EC_P256);
-                        publickey.set_allocated_ec_p256_public_key(ecP256PublicKey);
-
-                        securegcm::Ukey2ServerInit serverInit;
-                        serverInit.set_version(1);
-                        serverInit.set_random(QByteArray(Cryptography::randomBytes(32)).toStdString());
-                        serverInit.set_handshake_cipher(securegcm::P256_SHA512);
-                        serverInit.set_public_key(publickey.SerializeAsString());
-
-                        securegcm::Ukey2Message replyMessage;
-                        replyMessage.set_message_type(securegcm::Ukey2Message_Type_SERVER_INIT);
-                        replyMessage.set_message_data(serverInit.SerializeAsString());
-
-                        d->serverInitMessage = QByteArray::fromStdString(replyMessage.SerializeAsString());
-                        sendPacket(d->serverInitMessage);
-                        d->state = NearbySocketPrivate::WaitingForUkey2ClientFinish;
-                        return;
-                    }
+            case securegcm::Ukey2Message_Type_ALERT:
+                {
+                    securegcm::Ukey2Alert alert;
+                    alert.ParseFromString(frame.toStdString());
+                    break;
                 }
-                break;
-            }
-            case securegcm::Ukey2Message_Type_SERVER_INIT:
-                break;
-            case securegcm::Ukey2Message_Type_CLIENT_FINISH: {
-                if (d->state == NearbySocketPrivate::WaitingForUkey2ClientFinish) {
-                    securegcm::Ukey2ClientFinished clientFinish;
-                    auto success = clientFinish.ParseFromString(ukey2Message.message_data());
-                    if (success) {
-                        // https://github.com/google/ukey2#deriving-the-authentication-string-and-the-next-protocol-secret
-                        securemessage::GenericPublicKey publickey;
-                        publickey.ParseFromString(clientFinish.public_key());
+            case securegcm::Ukey2Message_Type_CLIENT_INIT:
+                {
+                    if (d->state == NearbySocketPrivate::WaitingForUkey2ClientInit) {
+                        securegcm::Ukey2ClientInit clientInit;
+                        auto success = clientInit.ParseFromString(ukey2Message.message_data());
+                        if (success) {
+                            d->clientInitMessage = frame;
 
-                        if (publickey.type() != securemessage::EC_P256) {
-                            // TODO: close connection
+                            if (clientInit.version() != 1) {
+                                alertType = securegcm::Ukey2Alert_AlertType_BAD_VERSION;
+                                QTextStream(stderr) << "Handshake failed due to bad version\n";
+                                break;
+                            }
+
+                            if (clientInit.random().length() != 32) {
+                                alertType = securegcm::Ukey2Alert_AlertType_BAD_RANDOM;
+                                QTextStream(stderr) << "Handshake failed due to bad random\n";
+                                break;
+                            }
+
+                            if (QString::fromStdString(clientInit.next_protocol()) != "AES_256_CBC-HMAC_SHA256") {
+                                alertType = securegcm::Ukey2Alert_AlertType_BAD_NEXT_PROTOCOL;
+                                QTextStream(stderr) << "Handshake failed due to bad next protocol\n";
+                                break;
+                            }
+
+                            QByteArray commitmentHash;
+                            for (const auto& commitment : clientInit.cipher_commitments()) {
+                                if (commitment.handshake_cipher() == securegcm::P256_SHA512) {
+                                    commitmentHash = QByteArray::fromStdString(commitment.commitment());
+                                }
+                            }
+                            if (commitmentHash.isEmpty()) {
+                                alertType = securegcm::Ukey2Alert_AlertType_BAD_HANDSHAKE_CIPHER;
+                                QTextStream(stderr) << "Handshake failed due to unsupported handshake commitments\n";
+                                break;
+                            }
+                            d->clientHash = commitmentHash;
+
+                            auto ecP256PublicKey = new securemessage::EcP256PublicKey();
+                            d->clientKey = Cryptography::generateEcdsaKeyPair();
+
+                            ecP256PublicKey->set_x(Cryptography::ecdsaX(d->clientKey).toStdString());
+                            ecP256PublicKey->set_y(Cryptography::ecdsaY(d->clientKey).toStdString());
+
+                            securemessage::GenericPublicKey publickey;
+                            publickey.set_type(securemessage::EC_P256);
+                            publickey.set_allocated_ec_p256_public_key(ecP256PublicKey);
+
+                            securegcm::Ukey2ServerInit serverInit;
+                            serverInit.set_version(1);
+                            serverInit.set_random(QByteArray(Cryptography::randomBytes(32)).toStdString());
+                            serverInit.set_handshake_cipher(securegcm::P256_SHA512);
+                            serverInit.set_public_key(publickey.SerializeAsString());
+
+                            securegcm::Ukey2Message replyMessage;
+                            replyMessage.set_message_type(securegcm::Ukey2Message_Type_SERVER_INIT);
+                            replyMessage.set_message_data(serverInit.SerializeAsString());
+
+                            d->serverInitMessage = QByteArray::fromStdString(replyMessage.SerializeAsString());
+                            sendPacket(d->serverInitMessage);
+                            d->state = NearbySocketPrivate::WaitingForUkey2ClientFinish;
                             return;
                         }
-
-                        auto ecp256 = publickey.ec_p256_public_key();
-
-                        auto dhs = QCryptographicHash::hash(Cryptography::diffieHellman(d->clientKey, QByteArray::fromStdString(ecp256.x()), QByteArray::fromStdString(ecp256.y())), QCryptographicHash::Sha256);
-                        auto m1 = d->clientInitMessage;
-                        auto m2 = d->serverInitMessage;
-                        const auto lAuth = 32;
-                        const auto lNext = 32;
-
-                        QByteArray m1m2;
-                        m1m2.append(m1);
-                        m1m2.append(m2);
-
-                        d->authString = Cryptography::hkdfExtractExpand("UKEY2 v1 auth", dhs, m1m2, lAuth);
-                        auto nextSecret = Cryptography::hkdfExtractExpand("UKEY2 v1 next", dhs, m1m2, lNext);
-
-                        auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "client", 32);
-                        auto d2dServer = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "server", 32);
-
-                        auto keySalt = QByteArray::fromHex("BF9D2A53C63616D75DB0A7165B91C1EF73E537F2427405FA23610A4BE657642E");
-                        auto clientKey = Cryptography::hkdfExtractExpand(keySalt, d2dClient, "ENC:2", 32);
-                        auto clientHmacKey = Cryptography::hkdfExtractExpand(keySalt, d2dClient, "SIG:1", 32);
-                        auto serverKey = Cryptography::hkdfExtractExpand(keySalt, d2dServer, "ENC:2", 32);
-                        auto serverHmacKey = Cryptography::hkdfExtractExpand(keySalt, d2dServer, "SIG:1", 32);
-
-                        if (d->isServer) {
-                            d->decryptKey = clientKey;
-                            d->receiveHmacKey = clientHmacKey;
-                            d->encryptKey = serverKey;
-                            d->sendHmacKey = serverHmacKey;
-                        } else {
-                            d->decryptKey = serverKey;
-                            d->receiveHmacKey = serverHmacKey;
-                            d->encryptKey = clientKey;
-                            d->sendHmacKey = clientHmacKey;
-                        }
-
-                        d->state = NearbySocketPrivate::WaitingForConnectionResponse;
-                        return;
                     }
+                    break;
                 }
+            case securegcm::Ukey2Message_Type_SERVER_INIT:
                 break;
-            }
+            case securegcm::Ukey2Message_Type_CLIENT_FINISH:
+                {
+                    if (d->state == NearbySocketPrivate::WaitingForUkey2ClientFinish) {
+                        securegcm::Ukey2ClientFinished clientFinish;
+                        auto success = clientFinish.ParseFromString(ukey2Message.message_data());
+                        if (success) {
+                            // https://github.com/google/ukey2#deriving-the-authentication-string-and-the-next-protocol-secret
+                            securemessage::GenericPublicKey publickey;
+                            publickey.ParseFromString(clientFinish.public_key());
+
+                            if (publickey.type() != securemessage::EC_P256) {
+                                // TODO: close connection
+                                return;
+                            }
+
+                            auto ecp256 = publickey.ec_p256_public_key();
+
+                            auto dhs = QCryptographicHash::hash(Cryptography::diffieHellman(d->clientKey, QByteArray::fromStdString(ecp256.x()), QByteArray::fromStdString(ecp256.y())), QCryptographicHash::Sha256);
+                            auto m1 = d->clientInitMessage;
+                            auto m2 = d->serverInitMessage;
+                            const auto lAuth = 32;
+                            const auto lNext = 32;
+
+                            QByteArray m1m2;
+                            m1m2.append(m1);
+                            m1m2.append(m2);
+
+                            d->authString = Cryptography::hkdfExtractExpand("UKEY2 v1 auth", dhs, m1m2, lAuth);
+                            auto nextSecret = Cryptography::hkdfExtractExpand("UKEY2 v1 next", dhs, m1m2, lNext);
+
+                            auto d2dClient = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "client", 32);
+                            auto d2dServer = Cryptography::hkdfExtractExpand(QByteArray::fromHex("82AA55A0D397F88346CA1CEE8D3909B95F13FA7DEB1D4AB38376B8256DA85510"), nextSecret, "server", 32);
+
+                            auto keySalt = QByteArray::fromHex("BF9D2A53C63616D75DB0A7165B91C1EF73E537F2427405FA23610A4BE657642E");
+                            auto clientKey = Cryptography::hkdfExtractExpand(keySalt, d2dClient, "ENC:2", 32);
+                            auto clientHmacKey = Cryptography::hkdfExtractExpand(keySalt, d2dClient, "SIG:1", 32);
+                            auto serverKey = Cryptography::hkdfExtractExpand(keySalt, d2dServer, "ENC:2", 32);
+                            auto serverHmacKey = Cryptography::hkdfExtractExpand(keySalt, d2dServer, "SIG:1", 32);
+
+                            if (d->isServer) {
+                                d->decryptKey = clientKey;
+                                d->receiveHmacKey = clientHmacKey;
+                                d->encryptKey = serverKey;
+                                d->sendHmacKey = serverHmacKey;
+                            } else {
+                                d->decryptKey = serverKey;
+                                d->receiveHmacKey = serverHmacKey;
+                                d->encryptKey = clientKey;
+                                d->sendHmacKey = clientHmacKey;
+                            }
+
+                            d->state = NearbySocketPrivate::WaitingForConnectionResponse;
+                            return;
+                        }
+                    }
+                    break;
+                }
         }
     }
 
@@ -469,7 +472,7 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
         return;
     }
 
-    //TODO: sequence number
+    // TODO: sequence number
     auto seq = d2dm.sequence_number();
 
     location::nearby::connections::OfflineFrame offlineFrame;
@@ -487,51 +490,54 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
     auto v1 = offlineFrame.v1();
 
     switch (v1.type()) {
-        case location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER: {
-            const auto& payloadTransfer = v1.payload_transfer();
-            const auto& payloadHeader = payloadTransfer.payload_header();
-            const auto& payloadChunk = payloadTransfer.payload_chunk();
-            auto id = payloadHeader.id();
+        case location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER:
+            {
+                const auto& payloadTransfer = v1.payload_transfer();
+                const auto& payloadHeader = payloadTransfer.payload_header();
+                const auto& payloadChunk = payloadTransfer.payload_chunk();
+                auto id = payloadHeader.id();
 
-            AbstractNearbyPayloadPtr payload;
-            if (d->pendingPayloads.contains(id)) {
-                payload = d->pendingPayloads.value(id);
-            } else {
-                payload = AbstractNearbyPayloadPtr(new NearbyPayload(id, payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
-                d->pendingPayloads.insert(id, payload);
+                AbstractNearbyPayloadPtr payload;
+                if (d->pendingPayloads.contains(id)) {
+                    payload = d->pendingPayloads.value(id);
+                } else {
+                    payload = AbstractNearbyPayloadPtr(new NearbyPayload(id, payloadHeader.type() == location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES));
+                    d->pendingPayloads.insert(id, payload);
+                }
+
+                payload->loadChunk(payloadChunk.offset(), QByteArray::fromStdString(payloadChunk.body()));
+                if (payloadChunk.flags() & location::nearby::connections::PayloadTransferFrame_PayloadChunk_Flags_LAST_CHUNK) {
+                    payload->setCompleted();
+                    d->pendingPayloads.remove(id);
+
+                    emit messageReceived(payload);
+                }
+                break;
             }
-
-            payload->loadChunk(payloadChunk.offset(), QByteArray::fromStdString(payloadChunk.body()));
-            if (payloadChunk.flags() & location::nearby::connections::PayloadTransferFrame_PayloadChunk_Flags_LAST_CHUNK) {
-                payload->setCompleted();
-                d->pendingPayloads.remove(id);
-
-                emit messageReceived(payload);
+        case location::nearby::connections::V1Frame_FrameType_KEEP_ALIVE:
+            {
+                auto ka = v1.keep_alive();
+                if (ka.ack()) {
+                    QTextStream(stderr) << "Sent keepalive was ack'd\n";
+                } else {
+                    sendKeepalive(true);
+                }
+                break;
             }
-            break;
-        }
-        case location::nearby::connections::V1Frame_FrameType_KEEP_ALIVE: {
-            auto ka = v1.keep_alive();
-            if (ka.ack()) {
-                QTextStream(stderr) << "Sent keepalive was ack'd\n";
-            } else {
-                sendKeepalive(true);
-            }
-            break;
-        }
-        case location::nearby::connections::V1Frame_FrameType_DISCONNECTION: {
-            QTextStream(stderr) << "Received DISCONNECTION frame\n";
-            d->io->close();
+        case location::nearby::connections::V1Frame_FrameType_DISCONNECTION:
+            {
+                QTextStream(stderr) << "Received DISCONNECTION frame\n";
+                d->io->close();
 
-            break;
-        }
+                break;
+            }
         default:
             QTextStream(stderr) << "Received decrypted offline frame not PAYLOAD_TRANSFER or KEEP_ALIVE\n";
             break;
     }
 }
 
-void NearbySocket::sendPayloadPacket(const QByteArray &packet) {
+void NearbySocket::sendPayloadPacket(const QByteArray& packet) {
     auto id = QRandomGenerator64::global()->generate();
 
     auto payloadHeader1 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
@@ -585,7 +591,7 @@ void NearbySocket::sendPayloadPacket(const QByteArray &packet) {
     sendPacket(offlineFrame2);
 }
 
-void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite &message) {
+void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite& message) {
     sendPayloadPacket(QByteArray::fromStdString(message.SerializeAsString()));
 }
 

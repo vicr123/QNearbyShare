@@ -55,7 +55,7 @@ TEST(crypto, diffiehellman) {
 
     auto key = EC_KEY_new();
     auto derEncodedData = derEncodedPrivateKey.constData();
-    d2i_ECPrivateKey(&key, reinterpret_cast<const unsigned char **>(&derEncodedData), derEncodedPrivateKey.length());
+    d2i_ECPrivateKey(&key, reinterpret_cast<const unsigned char**>(&derEncodedData), derEncodedPrivateKey.length());
 
     auto evpKey = EVP_PKEY_new();
     EVP_PKEY_set1_EC_KEY(evpKey, key);

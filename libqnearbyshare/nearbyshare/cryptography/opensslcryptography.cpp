@@ -25,23 +25,23 @@
 #include "../cryptography.h"
 
 #include <QTextStream>
+#include <openssl/bn.h>
 #include <openssl/core_names.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
-#include <openssl/bn.h>
 
 namespace OpenSSLSupport {
-    QByteArray bignumToBytes(BIGNUM *bn);
-    BIGNUM *bytesToBignum(QByteArray ba);
-    QByteArray ecdsaBignumParam(EcKey *key, const char *paramName);
-}
+    QByteArray bignumToBytes(BIGNUM* bn);
+    BIGNUM* bytesToBignum(QByteArray ba);
+    QByteArray ecdsaBignumParam(EcKey* key, const char* paramName);
+} // namespace OpenSSLSupport
 
 struct EcKey {
-    EVP_PKEY* key;
+        EVP_PKEY* key;
 };
 
-EcKey *Cryptography::generateEcdsaKeyPair() {
+EcKey* Cryptography::generateEcdsaKeyPair() {
     auto ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr);
     if (ctx == nullptr) {
         return nullptr;
@@ -70,7 +70,7 @@ EcKey *Cryptography::generateEcdsaKeyPair() {
     return new EcKey{clientKey};
 }
 
-QByteArray OpenSSLSupport::ecdsaBignumParam(EcKey *key, const char *paramName) {
+QByteArray OpenSSLSupport::ecdsaBignumParam(EcKey* key, const char* paramName) {
     auto n = BN_new();
     auto ok = EVP_PKEY_get_bn_param(key->key, paramName, &n);
     if (!ok) {
@@ -85,21 +85,20 @@ QByteArray OpenSSLSupport::ecdsaBignumParam(EcKey *key, const char *paramName) {
     return nBytes;
 }
 
-QByteArray Cryptography::ecdsaX(EcKey *key) {
+QByteArray Cryptography::ecdsaX(EcKey* key) {
     return OpenSSLSupport::ecdsaBignumParam(key, OSSL_PKEY_PARAM_EC_PUB_X);
 }
 
-QByteArray Cryptography::ecdsaY(EcKey *key) {
+QByteArray Cryptography::ecdsaY(EcKey* key) {
     return OpenSSLSupport::ecdsaBignumParam(key, OSSL_PKEY_PARAM_EC_PUB_Y);
 }
 
-QByteArray Cryptography::diffieHellman(EcKey *ourKey, QByteArray peerX, QByteArray peerY) {
+QByteArray Cryptography::diffieHellman(EcKey* ourKey, QByteArray peerX, QByteArray peerY) {
     auto bnX = OpenSSLSupport::bytesToBignum(std::move(peerX));
     auto bnY = OpenSSLSupport::bytesToBignum(std::move(peerY));
 
     EC_KEY* ecPeerKey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    if (!EC_KEY_set_public_key_affine_coordinates(ecPeerKey, bnX, bnY))
-    {
+    if (!EC_KEY_set_public_key_affine_coordinates(ecPeerKey, bnX, bnY)) {
         BN_free(bnX);
         BN_free(bnY);
         return {};
@@ -143,7 +142,7 @@ QByteArray Cryptography::diffieHellman(EcKey *ourKey, QByteArray peerX, QByteArr
     QByteArray secret(secretLen, Qt::Uninitialized);
 
     /* Derive the shared secret */
-    if(EVP_PKEY_derive(ctx, reinterpret_cast<unsigned char *>(secret.data()), &secretLen) != 1){
+    if (EVP_PKEY_derive(ctx, reinterpret_cast<unsigned char*>(secret.data()), &secretLen) != 1) {
         EVP_PKEY_CTX_free(ctx);
         EVP_PKEY_free(peerKey);
         return {};
@@ -158,7 +157,7 @@ QByteArray Cryptography::diffieHellman(EcKey *ourKey, QByteArray peerX, QByteArr
 }
 
 QByteArray Cryptography::hkdfExtractExpand(const QByteArray& salt, const QByteArray& ikm, const QByteArray& info, size_t length) {
-    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr);
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr);
     if (!ctx) {
         // Clean up
         EVP_PKEY_CTX_free(ctx);
@@ -169,9 +168,9 @@ QByteArray Cryptography::hkdfExtractExpand(const QByteArray& salt, const QByteAr
     if (EVP_PKEY_derive_init(ctx) <= 0 ||
         EVP_PKEY_CTX_hkdf_mode(ctx, EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND) <= 0 ||
         EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) <= 0 ||
-        EVP_PKEY_CTX_set1_hkdf_salt(ctx, reinterpret_cast<const unsigned char *>(salt.constData()), salt.length()) <= 0 ||
-        EVP_PKEY_CTX_set1_hkdf_key(ctx, reinterpret_cast<const unsigned char *>(ikm.constData()), ikm.length()) <= 0 ||
-        EVP_PKEY_CTX_add1_hkdf_info(ctx, reinterpret_cast<const unsigned char *>(info.constData()), info.length()) <= 0) {
+        EVP_PKEY_CTX_set1_hkdf_salt(ctx, reinterpret_cast<const unsigned char*>(salt.constData()), salt.length()) <= 0 ||
+        EVP_PKEY_CTX_set1_hkdf_key(ctx, reinterpret_cast<const unsigned char*>(ikm.constData()), ikm.length()) <= 0 ||
+        EVP_PKEY_CTX_add1_hkdf_info(ctx, reinterpret_cast<const unsigned char*>(info.constData()), info.length()) <= 0) {
         // Clean up
         EVP_PKEY_CTX_free(ctx);
         return {};
@@ -179,7 +178,7 @@ QByteArray Cryptography::hkdfExtractExpand(const QByteArray& salt, const QByteAr
 
     // Perform HKDF extraction
     QByteArray outputKey(length, Qt::Uninitialized);
-    if (EVP_PKEY_derive(ctx, reinterpret_cast<unsigned char *>(outputKey.data()), &length) <= 0) {
+    if (EVP_PKEY_derive(ctx, reinterpret_cast<unsigned char*>(outputKey.data()), &length) <= 0) {
         // Clean up
         EVP_PKEY_CTX_free(ctx);
         return {};
@@ -189,28 +188,28 @@ QByteArray Cryptography::hkdfExtractExpand(const QByteArray& salt, const QByteAr
     return outputKey;
 }
 
-QByteArray Cryptography::aes256cbc(const QByteArray &input, const QByteArray &key, const QByteArray &iv, bool isEncrypt) {
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+QByteArray Cryptography::aes256cbc(const QByteArray& input, const QByteArray& key, const QByteArray& iv, bool isEncrypt) {
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
         return {};
     }
 
     EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
 
-    if (EVP_CipherInit_ex(ctx, EVP_aes_256_cbc(), nullptr, reinterpret_cast<const unsigned char *>(key.constData()), reinterpret_cast<const unsigned char *>(iv.constData()), isEncrypt) <= 0) {
+    if (EVP_CipherInit_ex(ctx, EVP_aes_256_cbc(), nullptr, reinterpret_cast<const unsigned char*>(key.constData()), reinterpret_cast<const unsigned char*>(iv.constData()), isEncrypt) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return {};
     }
 
     QByteArray output(input.length() + 32, Qt::Uninitialized);
     int outputLength;
-    if (EVP_CipherUpdate(ctx, reinterpret_cast<unsigned char *>(output.data()), &outputLength, reinterpret_cast<const unsigned char *>(input.constData()), input.length()) <= 0) {
+    if (EVP_CipherUpdate(ctx, reinterpret_cast<unsigned char*>(output.data()), &outputLength, reinterpret_cast<const unsigned char*>(input.constData()), input.length()) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return {};
     }
 
     auto fullOutputLength = outputLength;
-    if(EVP_CipherFinal_ex(ctx, reinterpret_cast<unsigned char *>(output.data() + outputLength), &outputLength) <= 0) {
+    if (EVP_CipherFinal_ex(ctx, reinterpret_cast<unsigned char*>(output.data() + outputLength), &outputLength) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return {};
     }
@@ -224,14 +223,14 @@ QByteArray Cryptography::aes256cbc(const QByteArray &input, const QByteArray &ke
     return output;
 }
 
-void Cryptography::deleteEcdsaKeyPair(EcKey *key) {
+void Cryptography::deleteEcdsaKeyPair(EcKey* key) {
     delete key;
 }
 
-QByteArray OpenSSLSupport::bignumToBytes(BIGNUM *bn) {
+QByteArray OpenSSLSupport::bignumToBytes(BIGNUM* bn) {
     auto bnBytes = BN_num_bytes(bn);
     QByteArray numData(bnBytes, Qt::Uninitialized);
-    BN_bn2bin(bn, reinterpret_cast<unsigned char *>(numData.data()));
+    BN_bn2bin(bn, reinterpret_cast<unsigned char*>(numData.data()));
 
     auto hexRep = BN_bn2hex(bn);
     auto isNegative = hexRep[0] == '-';
@@ -260,12 +259,11 @@ QByteArray OpenSSLSupport::bignumToBytes(BIGNUM *bn) {
     return numData;
 }
 
-BIGNUM * OpenSSLSupport::bytesToBignum(QByteArray ba) {
+BIGNUM* OpenSSLSupport::bytesToBignum(QByteArray ba) {
     if (ba[0] & 0x80) {
         QTextStream(stderr) << "Conversion to BIGNUM: BIGNUM was negative";
     }
 
-    auto bn = BN_bin2bn(reinterpret_cast<const unsigned char *>(ba.constData()), ba.length(), nullptr);
+    auto bn = BN_bin2bn(reinterpret_cast<const unsigned char*>(ba.constData()), ba.length(), nullptr);
     return bn;
 }
-
