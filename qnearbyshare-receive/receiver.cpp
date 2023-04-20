@@ -9,6 +9,11 @@
 #include <QDBusMessage>
 #include <QLocale>
 #include <QSocketNotifier>
+#include <QDBusMetaType>
+
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <unistd.h>
 
 struct ReceiverPrivate {
     QDBusInterface* manager{};
@@ -32,6 +37,9 @@ const QDBusArgument& operator>>(const QDBusArgument& argument, TransferProgress&
 Receiver::Receiver(QObject *parent) : QObject(parent) {
     d = new ReceiverPrivate();
     d->manager = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager");
+
+    qDBusRegisterMetaType<TransferProgress>();
+    qDBusRegisterMetaType<QList<TransferProgress>>();
 }
 
 Receiver::~Receiver() {
@@ -53,14 +61,11 @@ bool Receiver::startListening() {
     return true;
 }
 
-void Receiver::newSession(QDBusObjectPath path) {
+void Receiver::newSession(QDBusObjectPath path) { // NOLINT(performance-unnecessary-value-param)
     d->session = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, path.path(), QNEARBYSHARE_DBUS_SERVICE ".Session");
     QDBusConnection::sessionBus().connect(QNEARBYSHARE_DBUS_SERVICE, path.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString,QVariantMap,QStringList)));
 
-    auto transfersMessage = d->session->call("Transfers");
-    QList<TransferProgress> transfers;
-    auto transfersArg = transfersMessage.arguments().first().value<QDBusArgument>();
-    transfersArg >> transfers;
+    auto transfers = this->transfers();
 
     QTextStream(stderr) << "\n";
     QTextStream(stderr) << tr("Connection established!") << "\n";
@@ -106,7 +111,9 @@ void Receiver::sessionPropertiesChanged(QString interface, QVariantMap propertie
 void Receiver::question(QString question, std::function<void()> yes, std::function<void()> no) {
     QTextStream(stderr) << ":: " << question << " " << tr("[Y/n]") << " ";
     auto notifier = new QSocketNotifier(stdin->_fileno, QSocketNotifier::Read);
-    connect(notifier, &QSocketNotifier::activated, this, [yes, no, question, this] {
+    connect(notifier, &QSocketNotifier::activated, this, [yes, no, question, this, notifier] {
+        notifier->deleteLater();
+
         QTextStream s(stdin, QTextStream::ReadOnly);
         auto response = s.readLine();
         if (response.isEmpty()) {
@@ -133,10 +140,48 @@ void Receiver::acceptTransfer() {
     d->session->call("AcceptTransfer");
 
     QTextStream(stderr) << tr("Starting transfer...") << "\n";
+
+    auto transfers = this->transfers();
+    for (auto transfer : transfers) {
+        QTextStream(stderr) << transfer.fileName << "\n";
+    }
+
+    QDBusConnection::sessionBus().connect(d->session->service(), d->session->path(), d->session->interface(), "TransfersChanged", this, SLOT(transfersChanged(QList<TransferProgress>)));
 }
 
 void Receiver::rejectTransfer() {
     d->session->call("RejectTransfer");
 
     QTextStream(stderr) << "<!> " << tr("Rejected incoming transfer.") << "\n";
+}
+
+QList<TransferProgress> Receiver::transfers() {
+    auto transfersMessage = d->session->call("Transfers");
+    QList<TransferProgress> transfers;
+    auto transfersArg = transfersMessage.arguments().first().value<QDBusArgument>();
+    transfersArg >> transfers;
+    return transfers;
+}
+
+void Receiver::transfersChanged(QList<TransferProgress> transfers) {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    qint64 filenameWidth = 0;
+    for (const auto& transfer : transfers) {
+        filenameWidth = qMax(filenameWidth, transfer.fileName.length());
+    }
+
+    QTextStream(stderr) << "\033[" << transfers.length() << "A";
+    for (const auto& transfer : transfers) {
+        auto progressLength = w.ws_col - filenameWidth - 10;
+        auto progress = transfer.transferred / static_cast<double>(transfer.size);
+        QString progressBar(progressLength, ' ');
+        int filledProgress = progressLength * progress;
+        progressBar.replace(0, filledProgress, QString(filledProgress, '#'));
+
+        auto percentage = QString::number(static_cast<int>(round(progress * 100))).rightJustified(3, ' ');
+
+        QTextStream(stderr) << transfer.fileName.leftJustified(filenameWidth, ' ') << "   [" << progressBar << "] " << percentage << "%\033[K\n";
+    }
 }

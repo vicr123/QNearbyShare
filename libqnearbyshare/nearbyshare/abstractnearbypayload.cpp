@@ -12,7 +12,7 @@ struct AbstractNearbyPayloadPrivate {
     bool isBytes;
 
     QIODevice* output;
-    quint64 read;
+    quint64 read = 0;
     bool completed = false;
 };
 

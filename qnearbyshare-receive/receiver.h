@@ -36,11 +36,13 @@ public:
 private slots:
     void newSession(QDBusObjectPath path);
     void sessionPropertiesChanged(QString interface, QVariantMap properties, QStringList changedProperties);
+    void transfersChanged(QList<TransferProgress> transfers);
 
 private:
     ReceiverPrivate* d;
 
     void question(QString question, std::function<void()> yes, std::function<void()> no);
+    QList<TransferProgress> transfers();
 };
 
 Q_DECLARE_METATYPE(TransferProgress)

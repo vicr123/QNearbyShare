@@ -98,7 +98,7 @@ QString DBusNearbyShareSession::state() {
         TransferProgress prg;
         prg.fileName = item.fileName;
         prg.destination = item.destination;
-        prg.transferred = item.size;
+        prg.transferred = item.transferred;
         prg.size = item.size;
         prg.complete = item.complete;
         progress.append(prg);
