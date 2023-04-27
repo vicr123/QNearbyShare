@@ -23,6 +23,7 @@
  */
 
 #include "nearbyshareserver.h"
+#include "nearbyshareclient.h"
 #include "qzeroconf.h"
 #include <QHostInfo>
 #include <QRandomGenerator>
@@ -34,12 +35,11 @@
 
 // Protocol documentation: https://github.com/grishka/NearDrop/blob/master/PROTOCOL.md
 
-#include "nearbyshareclient.h"
 
 struct NearbyShareServerPrivate {
         bool running = false;
 
-        QTcpServer* tcp;
+        QTcpServer* tcp{};
         QZeroConf zeroconf;
         QByteArray serviceName;
 };
@@ -49,8 +49,14 @@ NearbyShareServer::NearbyShareServer() :
     d = new NearbyShareServerPrivate();
 
     // TODO: Generate endpointId randomly?
-    QString endpointId = "AHGE";
-    d->serviceName.append("\x23");
+    QString endpoints = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    QString endpointId;
+
+    for (auto i = 0; i < 4; i++) {
+        endpointId.append(endpoints.at(QRandomGenerator::system()->bounded(endpoints.length())));
+    }
+
+    d->serviceName.append("\x23"); // NOLINT(modernize-raw-string-literal)
     d->serviceName.append(endpointId.toUtf8());
     d->serviceName.append("\xFC\x9F\x5E");
     d->serviceName.append("\x00\x00");
@@ -98,7 +104,7 @@ void NearbyShareServer::acceptPendingConnection() {
     });
 }
 
-QString NearbyShareServer::serverName() {
+QString NearbyShareServer::serverName() { // NOLINT(readability-convert-member-functions-to-static)
     return QHostInfo::localHostName();
 }
 
