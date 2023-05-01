@@ -49,11 +49,12 @@ public:
 public slots:
     Q_SCRIPTABLE [[maybe_unused]] QList<QDBusObjectPath> Sessions();
     Q_SCRIPTABLE QDBusObjectPath StartListening(const QDBusMessage& message);
+    Q_SCRIPTABLE QDBusObjectPath DiscoverTargets(const QDBusMessage& message);
 
-    signals:
-        void isRunningChanged(bool running);
+signals:
+    void isRunningChanged(bool running);
 
-        Q_SCRIPTABLE void NewSession(QDBusObjectPath sessionPath);
+    Q_SCRIPTABLE void NewSession(QDBusObjectPath sessionPath);
 
 private:
     DBusNearbyShareManagerPrivate* d;

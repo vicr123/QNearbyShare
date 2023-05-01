@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) 2023 Victor Tran
  *
@@ -22,20 +20,36 @@
  * SOFTWARE.
  */
 
-#ifndef QNEARBYSHARE_ENDPOINTINFO_H
-#define QNEARBYSHARE_ENDPOINTINFO_H
+//
+// Created by victor on 1/05/23.
+//
 
-#include <QByteArray>
-#include <QString>
+#ifndef QNEARBYSHARE_NEARBYSHAREDISCOVERY_H
+#define QNEARBYSHARE_NEARBYSHAREDISCOVERY_H
 
-struct EndpointInfo {
-        uint version = 0;
-        bool visible = true;
-        uint deviceType = 3;
-        QString deviceName;
+#include <QObject>
 
-        static EndpointInfo fromByteArray(const QByteArray& data, bool* ok = nullptr);
-        QByteArray toByteArray();
+struct NearbyShareDiscoveryPrivate;
+class NearbyShareDiscovery : public QObject {
+        Q_OBJECT
+    public:
+        explicit NearbyShareDiscovery(QObject* parent);
+        ~NearbyShareDiscovery() override;
+
+        struct NearbyShareTarget {
+                QString connectionString;
+                QString name;
+                int deviceType;
+        };
+
+        QList<NearbyShareTarget> availableTargets();
+
+    signals:
+        void newTarget(NearbyShareTarget target);
+        void targetGone(QString connectionString);
+
+    private:
+        NearbyShareDiscoveryPrivate* d;
 };
 
-#endif // QNEARBYSHARE_ENDPOINTINFO_H
+#endif // QNEARBYSHARE_NEARBYSHAREDISCOVERY_H

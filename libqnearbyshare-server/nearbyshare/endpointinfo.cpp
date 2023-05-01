@@ -26,8 +26,11 @@
 #include <QHostInfo>
 #include <QRandomGenerator>
 
-EndpointInfo EndpointInfo::fromByteArray(const QByteArray& data) {
-    if (data.length() < 17) return {};
+EndpointInfo EndpointInfo::fromByteArray(const QByteArray& data, bool* ok) {
+    if (data.length() < 17) {
+        if (ok) *ok = false;
+        return {};
+    }
 
     EndpointInfo info;
 
@@ -37,9 +40,13 @@ EndpointInfo EndpointInfo::fromByteArray(const QByteArray& data) {
     info.deviceType = (byte1 & 0b00001110) >> 1;
 
     auto deviceNameLength = data.at(17);
-    if (data.length() < deviceNameLength + 17) return {};
+    if (data.length() < deviceNameLength + 17) {
+        if (ok) *ok = false;
+        return {};
+    }
     info.deviceName = data.mid(18, deviceNameLength);
 
+    if (ok) *ok = true;
     return info;
 }
 QByteArray EndpointInfo::toByteArray() {

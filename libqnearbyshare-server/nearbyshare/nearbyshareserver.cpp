@@ -24,6 +24,7 @@
 
 #include "nearbyshareserver.h"
 #include "nearbyshareclient.h"
+#include "nearbyshareconstants.h"
 #include "qzeroconf.h"
 #include <QHostInfo>
 #include <QRandomGenerator>
@@ -79,7 +80,7 @@ void NearbyShareServer::start() {
     connect(d->tcp, &QTcpServer::pendingConnectionAvailable, this, &NearbyShareServer::acceptPendingConnection);
     d->tcp->listen();
 
-    d->zeroconf.startServicePublish(d->serviceName.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals).data(), "_FC9F5ED42C8A._tcp.", "", d->tcp->serverPort());
+    d->zeroconf.startServicePublish(d->serviceName.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals).data(), QNearbyShare::ZEROCONF_TYPE, "", d->tcp->serverPort());
     d->running = true;
 }
 

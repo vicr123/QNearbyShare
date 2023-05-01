@@ -8,7 +8,8 @@ set(SOURCES
         nearbyshare/nearbyshareclient.cpp
         nearbyshare/abstractnearbypayload.cpp
         nearbyshare/nearbypayload.cpp
-)
+        nearbyshare/nearbysharediscovery.cpp
+        )
 
 set(HEADERS
         nearbyshare/nearbyshareserver.h
@@ -18,7 +19,7 @@ set(HEADERS
         nearbyshare/nearbyshareclient.h
         nearbyshare/abstractnearbypayload.h
         nearbyshare/nearbypayload.h
-        )
+        nearbyshare/nearbysharediscovery.h nearbyshare/nearbyshareconstants.h)
 
 add_subdirectory(QtZeroConf EXCLUDE_FROM_ALL)
 add_subdirectory(proto)

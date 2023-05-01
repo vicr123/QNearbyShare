@@ -27,6 +27,7 @@
 #include <nearbyshare/nearbyshareserver.h>
 
 #include "dbushelpers.h"
+#include "dbusnearbysharediscovery.h"
 #include "dbusnearbysharelistener.h"
 #include "dbusnearbysharesession.h"
 
@@ -39,6 +40,7 @@ struct DBusNearbyShareManagerPrivate {
 
         quint64 sessionNum = 0;
         quint64 listenerNum = 0;
+        quint64 targetDiscoveryNum = 0;
 };
 
 DBusNearbyShareManager::DBusNearbyShareManager(QObject* parent) :
@@ -105,5 +107,13 @@ QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage& messa
 
     this->setRunning(true);
 
+    return QDBusObjectPath(path);
+}
+
+QDBusObjectPath DBusNearbyShareManager::DiscoverTargets(const QDBusMessage& message) {
+    auto path = QStringLiteral("%1/targetDiscovery/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->targetDiscoveryNum);
+    d->targetDiscoveryNum++;
+
+    auto discovery = new DBusNearbyShareDiscovery(message.service(), path, this);
     return QDBusObjectPath(path);
 }

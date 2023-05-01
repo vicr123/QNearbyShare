@@ -7,6 +7,7 @@ set(SOURCES
     dbus/dbusnearbysharesession.cpp
     dbus/dbushelpers.cpp
     dbus/dbusnearbysharelistener.cpp
+        dbus/dbusnearbysharediscovery.cpp
 )
 
 set(HEADERS
@@ -15,7 +16,7 @@ set(HEADERS
         dbus/dbusnearbysharesession.h
         dbus/dbushelpers.h
         dbus/dbusnearbysharelistener.h
-        )
+        dbus/dbusnearbysharediscovery.h)
 
 add_executable(QNearbyShare-daemon ${SOURCES} ${HEADERS})
 target_include_directories(QNearbyShare-daemon PRIVATE ../libqnearbyshare-server ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})

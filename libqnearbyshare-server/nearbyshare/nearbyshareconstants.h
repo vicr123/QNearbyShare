@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) 2023 Victor Tran
  *
@@ -22,20 +20,15 @@
  * SOFTWARE.
  */
 
-#ifndef QNEARBYSHARE_ENDPOINTINFO_H
-#define QNEARBYSHARE_ENDPOINTINFO_H
+//
+// Created by victor on 1/05/23.
+//
 
-#include <QByteArray>
-#include <QString>
+#ifndef QNEARBYSHARE_NEARBYSHARECONSTANTS_H
+#define QNEARBYSHARE_NEARBYSHARECONSTANTS_H
 
-struct EndpointInfo {
-        uint version = 0;
-        bool visible = true;
-        uint deviceType = 3;
-        QString deviceName;
+namespace QNearbyShare {
+    const inline char* ZEROCONF_TYPE = "_FC9F5ED42C8A._tcp.";
+}
 
-        static EndpointInfo fromByteArray(const QByteArray& data, bool* ok = nullptr);
-        QByteArray toByteArray();
-};
-
-#endif // QNEARBYSHARE_ENDPOINTINFO_H
+#endif // QNEARBYSHARE_NEARBYSHARECONSTANTS_H
