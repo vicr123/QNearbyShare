@@ -24,6 +24,7 @@
 
 #include "dbusnearbysharemanager.h"
 #include <QDBusConnection>
+#include <QDBusMetaType>
 #include <nearbyshare/nearbyshareserver.h>
 
 #include "dbushelpers.h"
@@ -114,6 +115,10 @@ QDBusObjectPath DBusNearbyShareManager::DiscoverTargets(const QDBusMessage& mess
     auto path = QStringLiteral("%1/targetDiscovery/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->targetDiscoveryNum);
     d->targetDiscoveryNum++;
 
-    auto discovery = new DBusNearbyShareDiscovery(message.service(), path, this);
+    new DBusNearbyShareDiscovery(message.service(), path, this);
     return QDBusObjectPath(path);
+}
+
+QDBusObjectPath DBusNearbyShareManager::SendToTarget(QString connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message) {
+    return QDBusObjectPath();
 }

@@ -20,26 +20,57 @@
  * SOFTWARE.
  */
 
+//
+// Created by victor on 1/05/23.
+//
+
+#include "console.h"
+#include "devicediscovery.h"
+#include "qnearbysharedbus.h"
+#include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QTextStream>
-#include <qnearbysharedbus.h>
+#include <QFile>
 
-#include <QDBusConnection>
-
-#include "dbus/dbusnearbysharemanager.h"
-#include "dbus/constants.h"
-
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     QCoreApplication a(argc, argv);
+    a.setApplicationName("qnearbyshare-send");
 
     QNearbyShare::DBus::registerDBusMetaTypes();
 
-    auto manager = new DBusNearbyShareManager();
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Nearby Share");
+    parser.addHelpOption();
+    parser.addVersionOption();
 
-    QDBusConnection::sessionBus().registerObject(QNearbyShare::DBUS_ROOT_PATH, manager, QDBusConnection::ExportScriptableContents);
-    QDBusConnection::sessionBus().registerService(QNearbyShare::DBUS_SERVICE);
+    parser.process(a);
 
-    QTextStream(stdout) << "Server Running\n";
+    Console console;
 
-    return QCoreApplication::exec();
+    if (parser.positionalArguments().isEmpty()) {
+        console.outputInvocationError("missing file operand");
+        return 1;
+    }
+
+    QList<QFile*> files;
+    for (const auto& arg : parser.positionalArguments()) {
+        auto* f = new QFile(arg);
+        if (!f->open(QFile::ReadOnly)) {
+            console.outputInvocationError(QStringLiteral("cannot access '%1': %2").arg(arg, f->errorString()));
+
+            delete f;
+            qDeleteAll(files);
+            return 1;
+        }
+        files.append(f);
+    }
+
+    auto discovery = new DeviceDiscovery(&console);
+    auto connectionString = discovery->exec();
+    if (connectionString.isEmpty()) {
+        return 1;
+    }
+
+    console.outputError(QStringLiteral("Sending to %1").arg(connectionString));
+
+    return a.exec();
 }

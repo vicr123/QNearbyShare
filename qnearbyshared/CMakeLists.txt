@@ -19,8 +19,8 @@ set(HEADERS
         dbus/dbusnearbysharediscovery.h)
 
 add_executable(QNearbyShare-daemon ${SOURCES} ${HEADERS})
-target_include_directories(QNearbyShare-daemon PRIVATE ../libqnearbyshare-server ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(QNearbyShare-daemon libqnearbyshare-server Qt::Core Qt::Network Qt::DBus)
+target_include_directories(QNearbyShare-daemon PRIVATE ../libqnearbyshare-server ../dbus-types ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(QNearbyShare-daemon libqnearbyshare-server Qt::Core Qt::Network Qt::DBus libqnearbyshare-dbus-types)
 set_target_properties(QNearbyShare-daemon PROPERTIES
         OUTPUT_NAME "qnearbyshared"
         )

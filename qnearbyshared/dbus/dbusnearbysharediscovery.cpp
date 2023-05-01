@@ -38,25 +38,8 @@ struct DBusNearbyShareDiscoveryPrivate {
         NearbyShareDiscovery* discovery;
 };
 
-QDBusArgument& operator<<(QDBusArgument& argument, const DBusNearbyShareDiscovery::NearbyShareTarget& target) {
-    argument.beginStructure();
-    argument << target.connectionString << target.name << target.deviceType;
-    argument.endStructure();
-    return argument;
-}
-
-const QDBusArgument& operator>>(const QDBusArgument& argument, DBusNearbyShareDiscovery::NearbyShareTarget& target) {
-    argument.beginStructure();
-    argument >> target.connectionString >> target.name >> target.deviceType;
-    argument.endStructure();
-    return argument;
-}
-
 DBusNearbyShareDiscovery::DBusNearbyShareDiscovery(QString service, QString path, QObject* parent) :
     QObject(parent) {
-    qDBusRegisterMetaType<DBusNearbyShareDiscovery::NearbyShareTarget>();
-    qDBusRegisterMetaType<QList<DBusNearbyShareDiscovery::NearbyShareTarget>>();
-
     d = new DBusNearbyShareDiscoveryPrivate();
     d->path = path;
     d->service = service;
@@ -68,10 +51,11 @@ DBusNearbyShareDiscovery::DBusNearbyShareDiscovery(QString service, QString path
     connect(&d->watcher, &QDBusServiceWatcher::serviceUnregistered, this, &DBusNearbyShareDiscovery::stopDiscovery);
 
     d->discovery = new NearbyShareDiscovery(this);
-    connect(d->discovery, &NearbyShareDiscovery::newTarget, this, [this](NearbyShareDiscovery::NearbyShareTarget t) {
-        NearbyShareTarget target;
+    connect(d->discovery, &NearbyShareDiscovery::newTarget, this, [this](const NearbyShareDiscovery::NearbyShareTarget& t) {
+        QNearbyShare::DBus::NearbyShareTarget target;
         target.connectionString = t.connectionString;
         target.name = t.name;
+        target.deviceType = t.deviceType;
 
         emit DiscoveredNewTarget(target);
     });
@@ -88,12 +72,13 @@ void DBusNearbyShareDiscovery::stopDiscovery() {
     this->deleteLater();
 }
 
-QList<DBusNearbyShareDiscovery::NearbyShareTarget> DBusNearbyShareDiscovery::DiscoveredTargets(const QDBusMessage& message) {
-    QList<NearbyShareTarget> targets;
+QList<QNearbyShare::DBus::NearbyShareTarget> DBusNearbyShareDiscovery::DiscoveredTargets(const QDBusMessage& message) {
+    QList<QNearbyShare::DBus::NearbyShareTarget> targets;
     for (const auto& t : d->discovery->availableTargets()) {
-        NearbyShareTarget target;
+        QNearbyShare::DBus::NearbyShareTarget target;
         target.connectionString = t.connectionString;
         target.name = t.name;
+        target.deviceType = t.deviceType;
         targets.append(target);
     }
     return targets;

@@ -39,7 +39,7 @@ class NearbyShareDiscovery : public QObject {
         struct NearbyShareTarget {
                 QString connectionString;
                 QString name;
-                int deviceType;
+                uint deviceType;
         };
 
         QList<NearbyShareTarget> availableTargets();

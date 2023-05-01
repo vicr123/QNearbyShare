@@ -28,36 +28,39 @@
 #include "constants.h"
 #include <QDBusMessage>
 #include <QDBusObjectPath>
+#include <QDBusUnixFileDescriptor>
 #include <QObject>
+
+#include <sendingfile.h>
 
 struct DBusNearbyShareManagerPrivate;
 class DBusNearbyShareManager : public QObject {
-    Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".Manager")
-    Q_SCRIPTABLE Q_PROPERTY(QString ServerName READ serverName);
-    Q_SCRIPTABLE Q_PROPERTY(bool IsRunning READ isRunning NOTIFY isRunningChanged)
+        Q_OBJECT
+        Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".Manager")
+        Q_SCRIPTABLE Q_PROPERTY(QString ServerName READ serverName);
+        Q_SCRIPTABLE Q_PROPERTY(bool IsRunning READ isRunning NOTIFY isRunningChanged)
 
-public:
-    explicit DBusNearbyShareManager(QObject* parent = nullptr);
-    ~DBusNearbyShareManager();
+            public : explicit DBusNearbyShareManager(QObject* parent = nullptr);
+        ~DBusNearbyShareManager();
 
-    QString serverName();
+        QString serverName();
 
-    bool isRunning();
-    void setRunning(bool running);
+        bool isRunning();
+        void setRunning(bool running);
 
-public slots:
-    Q_SCRIPTABLE [[maybe_unused]] QList<QDBusObjectPath> Sessions();
-    Q_SCRIPTABLE QDBusObjectPath StartListening(const QDBusMessage& message);
-    Q_SCRIPTABLE QDBusObjectPath DiscoverTargets(const QDBusMessage& message);
+    public slots:
+        Q_SCRIPTABLE [[maybe_unused]] QList<QDBusObjectPath> Sessions();
+        Q_SCRIPTABLE QDBusObjectPath StartListening(const QDBusMessage& message);
+        Q_SCRIPTABLE QDBusObjectPath DiscoverTargets(const QDBusMessage& message);
+        Q_SCRIPTABLE QDBusObjectPath SendToTarget(QString connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message);
 
-signals:
-    void isRunningChanged(bool running);
+    signals:
+        void isRunningChanged(bool running);
 
-    Q_SCRIPTABLE void NewSession(QDBusObjectPath sessionPath);
+        Q_SCRIPTABLE void NewSession(QDBusObjectPath sessionPath);
 
-private:
-    DBusNearbyShareManagerPrivate* d;
+    private:
+        DBusNearbyShareManagerPrivate* d;
 };
 
 

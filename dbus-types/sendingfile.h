@@ -24,36 +24,23 @@
 // Created by victor on 1/05/23.
 //
 
-#ifndef QNEARBYSHARE_DBUSNEARBYSHAREDISCOVERY_H
-#define QNEARBYSHARE_DBUSNEARBYSHAREDISCOVERY_H
+#ifndef QNEARBYSHARE_SENDINGFILE_H
+#define QNEARBYSHARE_SENDINGFILE_H
 
-#include "dbusnearbysharemanager.h"
-#include <QObject>
+#include <QDBusArgument>
+#include <QDBusUnixFileDescriptor>
+#include <QString>
 
-#include <nearbysharetarget.h>
+namespace QNearbyShare::DBus {
+    struct SendingFile {
+            QDBusUnixFileDescriptor fd;
+            QString filename;
+    };
 
-struct DBusNearbyShareDiscoveryPrivate;
-class DBusNearbyShareDiscovery : public QObject {
-        Q_OBJECT
-        Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".TargetDiscovery")
-    public:
-        explicit DBusNearbyShareDiscovery(QString service, QString path, QObject* parent);
-        ~DBusNearbyShareDiscovery() override;
+    QDBusArgument& operator<<(QDBusArgument& argument, const QNearbyShare::DBus::SendingFile& file);
+    const QDBusArgument& operator>>(const QDBusArgument& argument, QNearbyShare::DBus::SendingFile& file);
+} // namespace QNearbyShare::DBus
 
-    public slots:
-        Q_SCRIPTABLE QList<QNearbyShare::DBus::NearbyShareTarget> DiscoveredTargets(const QDBusMessage& message);
-        Q_SCRIPTABLE void StopDiscovery(const QDBusMessage& message);
+Q_DECLARE_METATYPE(QNearbyShare::DBus::SendingFile)
 
-    signals:
-        Q_SCRIPTABLE void DiscoveredNewTarget(QNearbyShare::DBus::NearbyShareTarget target);
-        Q_SCRIPTABLE void DiscoveredTargetGone(QString connectionString);
-        void stoppedDiscovery();
-
-    private:
-        DBusNearbyShareDiscoveryPrivate* d;
-
-        void stopDiscovery();
-};
-
-
-#endif // QNEARBYSHARE_DBUSNEARBYSHAREDISCOVERY_H
+#endif // QNEARBYSHARE_SENDINGFILE_H

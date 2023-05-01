@@ -1,6 +1,3 @@
-find_package(Protobuf REQUIRED)
-find_package(OpenSSL REQUIRED)
-
 set(SOURCES
         main.cpp
 

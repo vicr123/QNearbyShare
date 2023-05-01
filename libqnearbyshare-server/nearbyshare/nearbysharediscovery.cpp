@@ -43,7 +43,7 @@ NearbyShareDiscovery::NearbyShareDiscovery(QObject* parent) :
         auto endpointInfo = EndpointInfo::fromByteArray(QByteArray::fromBase64(service->txt().value("n"), QByteArray::Base64UrlEncoding), &ok);
         if (!ok) return;
 
-        if (endpointInfo.version < 1) return;
+        if (endpointInfo.version > 1) return;
 
         NearbyShareTarget target;
         target.connectionString = QStringLiteral("%1:%2:%3").arg("tcp", service->ip().toString(), QString::number(service->port()));
@@ -65,6 +65,7 @@ NearbyShareDiscovery::NearbyShareDiscovery(QObject* parent) :
 }
 
 NearbyShareDiscovery::~NearbyShareDiscovery() {
+    d->zeroconf.stopBrowser();
     delete d;
 }
 

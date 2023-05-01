@@ -18,9 +18,11 @@ enable_testing()
 add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE="com.vicr123.qnearbyshare")
 add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH="/com/vicr123/qnearbyshare")
 
+add_subdirectory(dbus-types)
 add_subdirectory(libqnearbyshare-server)
 add_subdirectory(qnearbyshared)
 add_subdirectory(qnearbyshare-receive)
+add_subdirectory(qnearbyshare-send)
 
 if (BUILD_TESTS)
     add_subdirectory(test)

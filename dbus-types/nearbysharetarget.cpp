@@ -24,36 +24,18 @@
 // Created by victor on 1/05/23.
 //
 
-#ifndef QNEARBYSHARE_DBUSNEARBYSHAREDISCOVERY_H
-#define QNEARBYSHARE_DBUSNEARBYSHAREDISCOVERY_H
+#include "nearbysharetarget.h"
 
-#include "dbusnearbysharemanager.h"
-#include <QObject>
+QDBusArgument& QNearbyShare::DBus::operator<<(QDBusArgument& argument, const QNearbyShare::DBus::NearbyShareTarget& target) {
+    argument.beginStructure();
+    argument << target.connectionString << target.name << target.deviceType;
+    argument.endStructure();
+    return argument;
+}
 
-#include <nearbysharetarget.h>
-
-struct DBusNearbyShareDiscoveryPrivate;
-class DBusNearbyShareDiscovery : public QObject {
-        Q_OBJECT
-        Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".TargetDiscovery")
-    public:
-        explicit DBusNearbyShareDiscovery(QString service, QString path, QObject* parent);
-        ~DBusNearbyShareDiscovery() override;
-
-    public slots:
-        Q_SCRIPTABLE QList<QNearbyShare::DBus::NearbyShareTarget> DiscoveredTargets(const QDBusMessage& message);
-        Q_SCRIPTABLE void StopDiscovery(const QDBusMessage& message);
-
-    signals:
-        Q_SCRIPTABLE void DiscoveredNewTarget(QNearbyShare::DBus::NearbyShareTarget target);
-        Q_SCRIPTABLE void DiscoveredTargetGone(QString connectionString);
-        void stoppedDiscovery();
-
-    private:
-        DBusNearbyShareDiscoveryPrivate* d;
-
-        void stopDiscovery();
-};
-
-
-#endif // QNEARBYSHARE_DBUSNEARBYSHAREDISCOVERY_H
+const QDBusArgument& QNearbyShare::DBus::operator>>(const QDBusArgument& argument, QNearbyShare::DBus::NearbyShareTarget& target) {
+    argument.beginStructure();
+    argument >> target.connectionString >> target.name >> target.deviceType;
+    argument.endStructure();
+    return argument;
+}
