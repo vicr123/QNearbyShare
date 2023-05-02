@@ -54,6 +54,7 @@ DeviceDiscovery::DeviceDiscovery(Console* console, QObject* parent) :
 }
 
 DeviceDiscovery::~DeviceDiscovery() {
+    d->targetDiscovery->call("StopDiscovery");
     delete d;
 }
 

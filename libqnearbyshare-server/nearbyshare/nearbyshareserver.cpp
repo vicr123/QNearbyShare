@@ -62,10 +62,7 @@ NearbyShareServer::NearbyShareServer() :
     d->serviceName.append("\xFC\x9F\x5E");
     d->serviceName.append("\x00\x00");
 
-    EndpointInfo info;
-    info.deviceName = QHostInfo::localHostName();
-
-    d->zeroconf.addServiceTxtRecord("n", info.toByteArray().toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+    d->zeroconf.addServiceTxtRecord("n", EndpointInfo::system().toByteArray().toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
 }
 
 NearbyShareServer::~NearbyShareServer() {
@@ -99,7 +96,7 @@ void NearbyShareServer::acceptPendingConnection() {
     auto socket = d->tcp->nextPendingConnection();
     QTextStream(stdout) << "Pending connection accepted\n";
 
-    auto ns = new NearbyShareClient(socket, true);
+    auto ns = NearbyShareClient::clientForReceive(socket);
     connect(ns, &NearbyShareClient::negotiationCompleted, this, [this, ns] {
         emit newShare(ns);
     });

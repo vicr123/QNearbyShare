@@ -84,14 +84,14 @@ QByteArray Cryptography::ecdsaY(EcKey* key) {
     return yBa;
 }
 
-QByteArray Cryptography::diffieHellman(EcKey* ourKey, QByteArray peerX, QByteArray peerY) {
+QByteArray Cryptography::diffieHellman(EcKey* ourKey, const QByteArray& peerX, const QByteArray& peerY) {
     AutoSeededRandomPool prng;
     ECDH<ECP>::Domain ecdh((ASN1::secp256r1()));
     DL_GroupParameters_EC<ECP> params(ASN1::secp256r1());
 
     Integer x, y;
-    x.Decode(reinterpret_cast<const byte*>(peerX.data()), peerX.size(), Integer::SIGNED);
-    y.Decode(reinterpret_cast<const byte*>(peerY.data()), peerY.size(), Integer::SIGNED);
+    x.Decode(reinterpret_cast<const byte*>(peerX.constData()), peerX.size(), Integer::SIGNED);
+    y.Decode(reinterpret_cast<const byte*>(peerY.constData()), peerY.size(), Integer::SIGNED);
 
     QByteArray otherPk(params.GetEncodedElementSize(true), Qt::Uninitialized);
     params.EncodeElement(true, ECP::Point(x, y), reinterpret_cast<byte*>(otherPk.data()));

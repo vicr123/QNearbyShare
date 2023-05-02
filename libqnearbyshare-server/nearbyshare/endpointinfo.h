@@ -34,6 +34,7 @@ struct EndpointInfo {
         uint deviceType = 3;
         QString deviceName;
 
+        static EndpointInfo system();
         static EndpointInfo fromByteArray(const QByteArray& data, bool* ok = nullptr);
         QByteArray toByteArray();
 };

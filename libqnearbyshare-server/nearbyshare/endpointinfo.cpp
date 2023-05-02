@@ -66,3 +66,9 @@ QByteArray EndpointInfo::toByteArray() {
 
     return endpointInfo;
 }
+
+EndpointInfo EndpointInfo::system() {
+    EndpointInfo info;
+    info.deviceName = QHostInfo::localHostName();
+    return info;
+}

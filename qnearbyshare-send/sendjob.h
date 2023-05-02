@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) 2023 Victor Tran
  *
@@ -22,17 +20,27 @@
  * SOFTWARE.
  */
 
-#ifndef QNEARBYSHARE_CONSTANTS_H
-#define QNEARBYSHARE_CONSTANTS_H
+//
+// Created by victor on 2/05/23.
+//
 
-#include <QString>
+#ifndef QNEARBYSHARE_SENDJOB_H
+#define QNEARBYSHARE_SENDJOB_H
 
-namespace QNearbyShare {
-    const QString DBUS_SERVICE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE);
-    const QString DBUS_ROOT_PATH = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH);
+#include <QFile>
+#include <QObject>
 
-    const QString DBUS_ERROR_INVALID_STATE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidState");
-    const QString DBUS_ERROR_INVALID_CONNECTION_STRING = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidConnectionString");
-} // namespace QNearbyShare
+struct SendJobPrivate;
+class SendJob : public QObject {
+        Q_OBJECT
+    public:
+        explicit SendJob(QObject* parent = nullptr);
+        ~SendJob();
 
-#endif // QNEARBYSHARE_CONSTANTS_H
+        bool send(const QString& connectionString, const QList<QFile*>& files);
+
+    private:
+        SendJobPrivate* d;
+};
+
+#endif // QNEARBYSHARE_SENDJOB_H

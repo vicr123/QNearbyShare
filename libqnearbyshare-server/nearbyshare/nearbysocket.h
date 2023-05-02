@@ -35,7 +35,7 @@ struct NearbySocketPrivate;
 class NearbySocket : public QObject {
         Q_OBJECT
     public:
-        explicit NearbySocket(QIODevice* ioDevice, QObject* parent = nullptr);
+        explicit NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent = nullptr);
         ~NearbySocket();
 
         bool active();
@@ -54,6 +54,7 @@ class NearbySocket : public QObject {
     signals:
         void readyForEncryptedMessages();
         void messageReceived(AbstractNearbyPayloadPtr payload);
+        void errorOccurred();
         void disconnected();
 
     private:
@@ -64,6 +65,10 @@ class NearbySocket : public QObject {
         void processUkey2Frame(const QByteArray& frame);
         void processSecureFrame(const QByteArray& frame);
         void sendKeepalive(bool isAck);
+
+        void sendConnectionRequest();
+        void setupDiffieHellman(const QByteArray& x, const QByteArray& y);
+        void sendConnectionResponse();
 };
 
 #endif // QNEARBYSHARE_NEARBYSOCKET_H

@@ -27,6 +27,7 @@
 #include "console.h"
 #include "devicediscovery.h"
 #include "qnearbysharedbus.h"
+#include "sendjob.h"
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QFile>
@@ -39,6 +40,7 @@ int main(int argc, char* argv[]) {
 
     QCommandLineParser parser;
     parser.setApplicationDescription("Nearby Share");
+    parser.addOption({"connection-string", "Connection String to use", "connection-string"});
     parser.addHelpOption();
     parser.addVersionOption();
 
@@ -64,13 +66,27 @@ int main(int argc, char* argv[]) {
         files.append(f);
     }
 
-    auto discovery = new DeviceDiscovery(&console);
-    auto connectionString = discovery->exec();
-    if (connectionString.isEmpty()) {
-        return 1;
+    QString connectionString;
+    if (parser.isSet("connection-string")) {
+        connectionString = parser.value("connection-string");
+        if (connectionString.isEmpty()) {
+            console.outputInvocationError("option connection-string requires a value");
+            return 1;
+        }
+    } else {
+        DeviceDiscovery discovery(&console);
+        connectionString = discovery.exec();
+        if (connectionString.isEmpty()) {
+            return 1;
+        }
     }
 
-    console.outputError(QStringLiteral("Sending to %1").arg(connectionString));
+    console.outputErrorLine(QStringLiteral("Sending to %1").arg(connectionString));
+
+    SendJob job;
+    if (!job.send(connectionString, files)) {
+        return 1;
+    }
 
     return a.exec();
 }

@@ -30,6 +30,7 @@
 
 #include <QDir>
 #include <QStandardPaths>
+#include <QTcpSocket>
 #include <QTextStream>
 
 struct NearbyShareClientPrivate {
@@ -38,20 +39,19 @@ struct NearbyShareClientPrivate {
 
         QMap<qint64, AbstractNearbyPayloadPtr> filePayloads;
         NearbyShareClient::State state = NearbyShareClient::State::NotReady;
+
+        bool isServer;
+
+        enum InternalState {
+            WaitingForNearbyConnection,
+            WaitingForPairedKeyEncryption
+        };
+        InternalState internalState = WaitingForNearbyConnection;
 };
 
-NearbyShareClient::NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent) :
+NearbyShareClient::NearbyShareClient(QObject* parent) :
     QObject(parent) {
     d = new NearbyShareClientPrivate();
-    d->socket = new NearbySocket(ioDevice, this);
-
-    connect(d->socket, &NearbySocket::readyForEncryptedMessages, this, &NearbyShareClient::readyForEncryptedMessages);
-    connect(d->socket, &NearbySocket::messageReceived, this, &NearbyShareClient::messageReceived);
-    connect(d->socket, &NearbySocket::disconnected, this, [this] {
-        if (d->state != State::Complete && d->state != State::Failed) {
-            setState(State::Failed);
-        }
-    });
 }
 
 NearbyShareClient::~NearbyShareClient() {
@@ -59,6 +59,7 @@ NearbyShareClient::~NearbyShareClient() {
 }
 
 void NearbyShareClient::readyForEncryptedMessages() {
+    //    if (d->isServer) {
     auto pke = new sharing::nearby::PairedKeyEncryptionFrame();
     pke->set_secret_id_hash(Cryptography::randomBytes(6).toStdString());
     pke->set_signed_data(Cryptography::randomBytes(72).toStdString());
@@ -72,6 +73,8 @@ void NearbyShareClient::readyForEncryptedMessages() {
     nearbyFrame.set_allocated_v1(v1);
 
     d->socket->sendPayloadPacket(nearbyFrame);
+    //    }
+    d->internalState = NearbyShareClientPrivate::WaitingForPairedKeyEncryption;
 }
 
 void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload) {
@@ -131,7 +134,29 @@ void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload)
                     break;
                 }
             case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_RESULT:
-                break;
+                {
+                    if (!d->isServer) {
+                        // Introduce the files to be sent
+                        auto introduction = new sharing::nearby::IntroductionFrame();
+                        auto f = introduction->add_file_metadata();
+                        f->set_name("MY_FILE.png");
+                        f->set_mime_type("image/png");
+                        f->set_id(10);
+                        f->set_size(3000);
+                        f->set_payload_id(6000);
+
+                        auto v1 = new sharing::nearby::V1Frame();
+                        v1->set_type(sharing::nearby::V1Frame_FrameType_INTRODUCTION);
+                        v1->set_allocated_introduction(introduction);
+
+                        sharing::nearby::Frame nearbyFrame;
+                        nearbyFrame.set_version(sharing::nearby::Frame_Version_V1);
+                        nearbyFrame.set_allocated_v1(v1);
+
+                        d->socket->sendPayloadPacket(nearbyFrame);
+                    }
+                    break;
+                }
             case sharing::nearby::V1Frame_FrameType_CERTIFICATE_INFO:
                 break;
             case sharing::nearby::V1Frame_FrameType_CANCEL:
@@ -258,4 +283,57 @@ void NearbyShareClient::checkIfComplete() {
     }
 
     setState(State::Complete);
+}
+
+NearbyShareClient* NearbyShareClient::clientForReceive(QIODevice* device) {
+    auto client = new NearbyShareClient();
+    client->d->isServer = true;
+
+    client->d->socket = new NearbySocket(device, true, client);
+
+    connect(client->d->socket, &NearbySocket::readyForEncryptedMessages, client, &NearbyShareClient::readyForEncryptedMessages);
+    connect(client->d->socket, &NearbySocket::messageReceived, client, &NearbyShareClient::messageReceived);
+    connect(client->d->socket, &NearbySocket::disconnected, client, [client] {
+        if (client->d->state != State::Complete && client->d->state != State::Failed) {
+            client->setState(State::Failed);
+        }
+    });
+
+    return client;
+}
+
+NearbyShareClient* NearbyShareClient::clientForSend(QIODevice* device, QList<LocalFile> files) {
+    auto client = new NearbyShareClient();
+    client->d->isServer = false;
+
+    client->d->socket = new NearbySocket(device, false, client);
+
+    connect(client->d->socket, &NearbySocket::readyForEncryptedMessages, client, &NearbyShareClient::readyForEncryptedMessages);
+    connect(client->d->socket, &NearbySocket::messageReceived, client, &NearbyShareClient::messageReceived);
+    connect(client->d->socket, &NearbySocket::disconnected, client, [client] {
+        if (client->d->state != State::Complete && client->d->state != State::Failed) {
+            client->setState(State::Failed);
+        }
+    });
+
+    return client;
+}
+
+QIODevice* NearbyShareClient::resolveConnectionString(const QString& connectionString) {
+    auto parts = connectionString.split(":");
+    if (parts.first() == "tcp") {
+        const auto& host = parts.at(1);
+        const auto& portStr = parts.at(2);
+
+        bool ok;
+        auto port = portStr.toUInt(&ok);
+
+        if (!ok) return nullptr;
+
+        auto* socket = new QTcpSocket();
+        socket->connectToHost(host, port);
+        return socket;
+    }
+
+    return nullptr;
 }

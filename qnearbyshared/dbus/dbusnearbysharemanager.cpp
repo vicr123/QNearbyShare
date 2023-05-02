@@ -25,6 +25,7 @@
 #include "dbusnearbysharemanager.h"
 #include <QDBusConnection>
 #include <QDBusMetaType>
+#include <QFile>
 #include <nearbyshare/nearbyshareserver.h>
 
 #include "dbushelpers.h"
@@ -51,13 +52,7 @@ DBusNearbyShareManager::DBusNearbyShareManager(QObject* parent) :
     d->server = new NearbyShareServer();
 
     QObject::connect(d->server, &NearbyShareServer::newShare, [this](NearbyShareClient* client) {
-        d->sessionNum++;
-        auto path = QStringLiteral("%1/sessions/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->sessionNum);
-        auto session = new DBusNearbyShareSession(client, path);
-        QDBusConnection::sessionBus().registerObject(path, session, QDBusConnection::ExportScriptableContents);
-        d->sessions.append(QDBusObjectPath(path));
-
-        emit NewSession(QDBusObjectPath(path));
+        registerNewShare(client);
     });
 
     //    this->setRunning(true);
@@ -119,6 +114,37 @@ QDBusObjectPath DBusNearbyShareManager::DiscoverTargets(const QDBusMessage& mess
     return QDBusObjectPath(path);
 }
 
-QDBusObjectPath DBusNearbyShareManager::SendToTarget(QString connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message) {
-    return QDBusObjectPath();
+QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message) {
+    QIODevice* device = NearbyShareClient::resolveConnectionString(connectionString);
+
+    if (!device) {
+        // Error
+        message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_CONNECTION_STRING, "The connection string is invalid");
+        return {};
+    }
+
+    QList<NearbyShareClient::LocalFile> filesToTransfer;
+    for (const auto& file : files) {
+        auto qf = new QFile();
+        qf->open(dup(file.fd.fileDescriptor()), QFile::ReadOnly, QFile::AutoCloseHandle);
+
+        filesToTransfer.append({qf,
+            file.filename,
+            static_cast<quint64>(qf->size())});
+    }
+
+    auto client = NearbyShareClient::clientForSend(device, filesToTransfer);
+    return registerNewShare(client);
+}
+
+QDBusObjectPath DBusNearbyShareManager::registerNewShare(NearbyShareClient* client) {
+    d->sessionNum++;
+    auto path = QStringLiteral("%1/sessions/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->sessionNum);
+    auto session = new DBusNearbyShareSession(client, path);
+    QDBusConnection::sessionBus().registerObject(path, session, QDBusConnection::ExportScriptableContents);
+    d->sessions.append(QDBusObjectPath(path));
+
+    emit NewSession(QDBusObjectPath(path));
+
+    return QDBusObjectPath(path);
 }

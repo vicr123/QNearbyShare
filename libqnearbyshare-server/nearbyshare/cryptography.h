@@ -39,7 +39,7 @@ namespace Cryptography {
     QByteArray ecdsaX(EcKey* key);
     QByteArray ecdsaY(EcKey* key);
 
-    QByteArray diffieHellman(EcKey* ourKey, QByteArray peerX, QByteArray peerY);
+    QByteArray diffieHellman(EcKey* ourKey, const QByteArray& peerX, const QByteArray& peerY);
     QByteArray hkdfExtractExpand(const QByteArray& salt, const QByteArray& ikm, const QByteArray& info, size_t length);
 
     QByteArray aes256cbc(const QByteArray& input, const QByteArray& key, const QByteArray& iv, bool isEncrypt);

@@ -33,6 +33,7 @@
 
 #include <sendingfile.h>
 
+class NearbyShareClient;
 struct DBusNearbyShareManagerPrivate;
 class DBusNearbyShareManager : public QObject {
         Q_OBJECT
@@ -52,7 +53,7 @@ class DBusNearbyShareManager : public QObject {
         Q_SCRIPTABLE [[maybe_unused]] QList<QDBusObjectPath> Sessions();
         Q_SCRIPTABLE QDBusObjectPath StartListening(const QDBusMessage& message);
         Q_SCRIPTABLE QDBusObjectPath DiscoverTargets(const QDBusMessage& message);
-        Q_SCRIPTABLE QDBusObjectPath SendToTarget(QString connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message);
+        Q_SCRIPTABLE QDBusObjectPath SendToTarget(const QString& connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message);
 
     signals:
         void isRunningChanged(bool running);
@@ -61,6 +62,8 @@ class DBusNearbyShareManager : public QObject {
 
     private:
         DBusNearbyShareManagerPrivate* d;
+
+        QDBusObjectPath registerNewShare(NearbyShareClient* client);
 };
 
 

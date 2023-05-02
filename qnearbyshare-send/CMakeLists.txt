@@ -4,7 +4,7 @@ set(SOURCES
         )
 
 set(HEADERS
-        devicediscovery.h console.cpp console.h)
+        devicediscovery.h console.cpp console.h sendjob.cpp sendjob.h)
 
 add_executable(QNearbyShare-send ${SOURCES} ${HEADERS})
 target_link_libraries(QNearbyShare-send Qt::Core Qt::DBus libqnearbyshare-dbus-types)

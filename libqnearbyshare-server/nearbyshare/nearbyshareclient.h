@@ -32,8 +32,17 @@ struct NearbyShareClientPrivate;
 class NearbyShareClient : public QObject {
         Q_OBJECT
     public:
-        explicit NearbyShareClient(QIODevice* ioDevice, bool receive, QObject* parent = nullptr);
         ~NearbyShareClient();
+
+        struct LocalFile {
+                QIODevice* device;
+                QString fileName;
+                quint64 size;
+        };
+
+        static NearbyShareClient* clientForReceive(QIODevice* device);
+        static NearbyShareClient* clientForSend(QIODevice* device, QList<LocalFile> files);
+        static QIODevice* resolveConnectionString(const QString& connectionString);
 
         enum class State {
             NotReady,
@@ -69,6 +78,7 @@ class NearbyShareClient : public QObject {
         void filesToTransferChanged();
 
     private:
+        explicit NearbyShareClient(QObject* parent = nullptr);
         NearbyShareClientPrivate* d;
 
         void readyForEncryptedMessages();
