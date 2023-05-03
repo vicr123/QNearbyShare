@@ -120,7 +120,7 @@ QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionSt
 
     if (!device) {
         // Error
-        message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_CONNECTION_STRING, "The connection string is invalid");
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_CONNECTION_STRING, "The connection string is invalid"));
         return {};
     }
 

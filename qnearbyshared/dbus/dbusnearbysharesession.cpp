@@ -25,6 +25,7 @@
 #include "dbusnearbysharesession.h"
 
 #include "dbushelpers.h"
+#include <QDBusConnection>
 #include <nearbyshare/nearbyshareclient.h>
 #include <ranges>
 
@@ -90,11 +91,11 @@ QString DBusNearbyShareSession::peerName() {
 
 [[maybe_unused]] void DBusNearbyShareSession::AcceptTransfer(const QDBusMessage& message) {
     if (d->client->isSending()) {
-        message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_DIRECTION, "Can't accept an outbound transfer");
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_DIRECTION, "Can't accept an outbound transfer"));
         return;
     }
     if (d->client->state() != NearbyShareClient::State::WaitingForUserAccept) {
-        message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_STATE, "Can't accept a transfer that isn't pending user acceptance");
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_STATE, "Can't accept a transfer that isn't pending user acceptance"));
         return;
     }
     d->client->acceptTransfer();
@@ -102,11 +103,11 @@ QString DBusNearbyShareSession::peerName() {
 
 [[maybe_unused]] void DBusNearbyShareSession::RejectTransfer(const QDBusMessage& message) {
     if (d->client->isSending()) {
-        message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_DIRECTION, "Can't reject an outbound transfer");
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_DIRECTION, "Can't reject an outbound transfer"));
         return;
     }
     if (d->client->state() != NearbyShareClient::State::WaitingForUserAccept) {
-        message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_STATE, "Can't reject a transfer that isn't pending user acceptance");
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_STATE, "Can't reject a transfer that isn't pending user acceptance"));
         return;
     }
     d->client->rejectTransfer();

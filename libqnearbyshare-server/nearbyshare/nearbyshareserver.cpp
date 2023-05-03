@@ -74,7 +74,11 @@ void NearbyShareServer::start() {
     if (d->running) return;
 
     d->tcp = new QTcpServer(this);
+#if QT_VERSION > QT_VERSION_CHECK(6, 4, 0)
     connect(d->tcp, &QTcpServer::pendingConnectionAvailable, this, &NearbyShareServer::acceptPendingConnection);
+#else
+    connect(d->tcp, &QTcpServer::newConnection, this, &NearbyShareServer::acceptPendingConnection);
+#endif
     d->tcp->listen();
 
     d->zeroconf.startServicePublish(d->serviceName.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals).data(), QNearbyShare::ZEROCONF_TYPE, "", d->tcp->serverPort());

@@ -59,6 +59,9 @@ bool SendJob::send(const QString& connectionString, const QString& peerName, con
 
     auto reply = d->manager->call("SendToTarget", connectionString, peerName, QVariant::fromValue(sendingFiles));
     if (reply.type() != QDBusMessage::ReplyMessage) {
+        if (reply.errorName() == QNEARBYSHARE_DBUS_SERVICE ".InvalidConnectionString") {
+            QTextStream(stderr) << "<!> " << tr("Invalid connection string.") << "\n";
+        }
         return false;
     }
 
