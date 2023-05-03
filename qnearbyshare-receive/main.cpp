@@ -25,12 +25,14 @@
 #include "receiver.h"
 #include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QDBusConnection>
 #include <QTextStream>
+#include <qnearbysharedbus.h>
 
 int main(int argc, char* argv[]) {
     QCoreApplication a(argc, argv);
     a.setApplicationName("qnearbyshare-receive");
+
+    QNearbyShare::DBus::registerDBusMetaTypes();
 
     QCommandLineParser parser;
     parser.setApplicationDescription("Nearby Share");

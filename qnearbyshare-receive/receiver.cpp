@@ -153,7 +153,7 @@ void Receiver::acceptTransfer() {
         QTextStream(stderr) << transfer.fileName << "\n";
     }
 
-    QDBusConnection::sessionBus().connect(d->session->service(), d->session->path(), d->session->interface(), "TransfersChanged", this, SLOT(transfersChanged(QList<TransferProgress>)));
+    QDBusConnection::sessionBus().connect(d->session->service(), d->session->path(), d->session->interface(), "TransfersChanged", this, SLOT(transfersChanged(QList<QNearbyShare::DBus::TransferProgress>)));
 }
 
 void Receiver::rejectTransfer() {
