@@ -93,9 +93,9 @@ QByteArray Cryptography::ecdsaY(EcKey* key) {
     return OpenSSLSupport::ecdsaBignumParam(key, OSSL_PKEY_PARAM_EC_PUB_Y);
 }
 
-QByteArray Cryptography::diffieHellman(EcKey* ourKey, QByteArray peerX, QByteArray peerY) {
-    auto bnX = OpenSSLSupport::bytesToBignum(std::move(peerX));
-    auto bnY = OpenSSLSupport::bytesToBignum(std::move(peerY));
+QByteArray Cryptography::diffieHellman(EcKey* ourKey, const QByteArray& peerX, const QByteArray& peerY) {
+    auto bnX = OpenSSLSupport::bytesToBignum(peerX);
+    auto bnY = OpenSSLSupport::bytesToBignum(peerY);
 
     EC_KEY* ecPeerKey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
     if (!EC_KEY_set_public_key_affine_coordinates(ecPeerKey, bnX, bnY)) {
