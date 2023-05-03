@@ -67,6 +67,7 @@ int main(int argc, char* argv[]) {
     }
 
     QString connectionString;
+    QString peerName = "Remote Device";
     if (parser.isSet("connection-string")) {
         connectionString = parser.value("connection-string");
         if (connectionString.isEmpty()) {
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]) {
         }
     } else {
         DeviceDiscovery discovery(&console);
-        connectionString = discovery.exec();
+        connectionString = discovery.exec(&peerName);
         if (connectionString.isEmpty()) {
             return 1;
         }
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
     console.outputErrorLine(QStringLiteral("Sending to %1").arg(connectionString));
 
     SendJob job;
-    if (!job.send(connectionString, files)) {
+    if (!job.send(connectionString, peerName, files)) {
         return 1;
     }
 

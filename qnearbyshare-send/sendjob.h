@@ -29,6 +29,7 @@
 
 #include <QFile>
 #include <QObject>
+#include <transferprogress.h>
 
 struct SendJobPrivate;
 class SendJob : public QObject {
@@ -37,10 +38,15 @@ class SendJob : public QObject {
         explicit SendJob(QObject* parent = nullptr);
         ~SendJob();
 
-        bool send(const QString& connectionString, const QList<QFile*>& files);
+        bool send(const QString& connectionString, const QString& peerName, const QList<QFile*>& files);
+
+    private slots:
+        void sessionPropertiesChanged(QString interface, QVariantMap properties, QStringList changedProperties);
+        void transfersChanged(QList<QNearbyShare::DBus::TransferProgress> transfers);
 
     private:
         SendJobPrivate* d;
+        QList<QNearbyShare::DBus::TransferProgress> transfers();
 };
 
 #endif // QNEARBYSHARE_SENDJOB_H

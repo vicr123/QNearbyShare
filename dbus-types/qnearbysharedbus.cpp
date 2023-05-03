@@ -29,6 +29,7 @@
 
 #include "nearbysharetarget.h"
 #include "sendingfile.h"
+#include "transferprogress.h"
 
 #define REGISTER_DBUS_METATYPE(type) \
     qDBusRegisterMetaType<type>();   \
@@ -37,4 +38,5 @@
 void QNearbyShare::DBus::registerDBusMetaTypes() {
     REGISTER_DBUS_METATYPE(QNearbyShare::DBus::SendingFile);
     REGISTER_DBUS_METATYPE(QNearbyShare::DBus::NearbyShareTarget);
+    REGISTER_DBUS_METATYPE(QNearbyShare::DBus::TransferProgress);
 }

@@ -27,6 +27,7 @@
 #include <QDBusMetaType>
 #include <QFile>
 #include <nearbyshare/nearbyshareserver.h>
+#include <utility>
 
 #include "dbushelpers.h"
 #include "dbusnearbysharediscovery.h"
@@ -114,7 +115,7 @@ QDBusObjectPath DBusNearbyShareManager::DiscoverTargets(const QDBusMessage& mess
     return QDBusObjectPath(path);
 }
 
-QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionString, QList<QNearbyShare::DBus::SendingFile> files, const QDBusMessage& message) {
+QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionString, QString peerName, const QList<QNearbyShare::DBus::SendingFile>& files, const QDBusMessage& message) {
     QIODevice* device = NearbyShareClient::resolveConnectionString(connectionString);
 
     if (!device) {
@@ -133,7 +134,7 @@ QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionSt
             static_cast<quint64>(qf->size())});
     }
 
-    auto client = NearbyShareClient::clientForSend(device, filesToTransfer);
+    auto client = NearbyShareClient::clientForSend(device, std::move(peerName), filesToTransfer);
     return registerNewShare(client);
 }
 

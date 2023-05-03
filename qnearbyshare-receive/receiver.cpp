@@ -40,27 +40,10 @@ struct ReceiverPrivate {
         QDBusInterface* session{};
 };
 
-QDBusArgument& operator<<(QDBusArgument& argument, const TransferProgress& transferProgress) {
-    argument.beginStructure();
-    argument << transferProgress.fileName << transferProgress.destination << transferProgress.transferred << transferProgress.size << transferProgress.complete;
-    argument.endStructure();
-    return argument;
-}
-
-const QDBusArgument& operator>>(const QDBusArgument& argument, TransferProgress& transferProgress) {
-    argument.beginStructure();
-    argument >> transferProgress.fileName >> transferProgress.destination >> transferProgress.transferred >> transferProgress.size >> transferProgress.complete;
-    argument.endStructure();
-    return argument;
-}
-
 Receiver::Receiver(QObject* parent) :
     QObject(parent) {
     d = new ReceiverPrivate();
     d->manager = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager");
-
-    qDBusRegisterMetaType<TransferProgress>();
-    qDBusRegisterMetaType<QList<TransferProgress>>();
 }
 
 Receiver::~Receiver() {
@@ -131,6 +114,7 @@ void Receiver::sessionPropertiesChanged(QString interface, QVariantMap propertie
         }
     }
 }
+
 void Receiver::question(QString question, std::function<void()> yes, std::function<void()> no) {
     QTextStream(stderr) << ":: " << question << " " << tr("[Y/n]") << " ";
     auto notifier = new QSocketNotifier(stdin->_fileno, QSocketNotifier::Read);
@@ -178,15 +162,15 @@ void Receiver::rejectTransfer() {
     QTextStream(stderr) << "<!> " << tr("Rejected incoming transfer.") << "\n";
 }
 
-QList<TransferProgress> Receiver::transfers() {
+QList<QNearbyShare::DBus::TransferProgress> Receiver::transfers() {
     auto transfersMessage = d->session->call("Transfers");
-    QList<TransferProgress> transfers;
+    QList<QNearbyShare::DBus::TransferProgress> transfers;
     auto transfersArg = transfersMessage.arguments().first().value<QDBusArgument>();
     transfersArg >> transfers;
     return transfers;
 }
 
-void Receiver::transfersChanged(QList<TransferProgress> transfers) {
+void Receiver::transfersChanged(QList<QNearbyShare::DBus::TransferProgress> transfers) {
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 

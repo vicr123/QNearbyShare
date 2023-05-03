@@ -58,7 +58,7 @@ DeviceDiscovery::~DeviceDiscovery() {
     delete d;
 }
 
-QString DeviceDiscovery::exec() {
+QString DeviceDiscovery::exec(QString* peerName) {
     if (!d->valid) {
         d->console->outputErrorLine("Could not scan for devices. Is the DBus service running?");
         return {};
@@ -92,14 +92,16 @@ reloadTargets:
             if (!ok) continue;
             if (index < 0) continue;
             if (index >= targets.length()) continue;
-            connectionString = targets.at(index);
+            auto connection = targets.at(index);
+            connectionString = connection.first;
+            *peerName = connection.second;
         }
     }
 
     return connectionString;
 }
 
-QStringList DeviceDiscovery::printAvailableTargets() {
+QList<QPair<QString, QString>> DeviceDiscovery::printAvailableTargets() {
     auto targetsReply = d->targetDiscovery->call("DiscoveredTargets");
     if (targetsReply.type() != QDBusMessage::ReplyMessage) {
         return {};
@@ -109,11 +111,11 @@ QStringList DeviceDiscovery::printAvailableTargets() {
     QList<QNearbyShare::DBus::NearbyShareTarget> targets;
     targetsArg >> targets;
 
-    QStringList connectionStrings;
+    QList<QPair<QString, QString>> connectionStrings;
     QList<QStringList> table;
     for (int i = 1; i <= targets.length(); i++) {
         auto target = targets.at(i - 1);
-        connectionStrings.append(target.connectionString);
+        connectionStrings.append({target.connectionString, target.name});
         table.append({QString::number(i),
             target.connectionString,
             target.name});

@@ -29,18 +29,7 @@
 #include <QDBusObjectPath>
 #include <QObject>
 #include <functional>
-
-struct TransferProgress {
-        QString fileName;
-        QString destination;
-        quint64 size;
-
-        quint64 transferred = 0;
-        bool complete = false;
-};
-
-QDBusArgument& operator<<(QDBusArgument& argument, const TransferProgress& transferProgress);
-const QDBusArgument& operator>>(const QDBusArgument& argument, TransferProgress& transferProgress);
+#include <transferprogress.h>
 
 struct ReceiverPrivate;
 class Receiver : public QObject {
@@ -56,16 +45,13 @@ class Receiver : public QObject {
     private slots:
         void newSession(QDBusObjectPath path);
         void sessionPropertiesChanged(QString interface, QVariantMap properties, QStringList changedProperties);
-        void transfersChanged(QList<TransferProgress> transfers);
+        void transfersChanged(QList<QNearbyShare::DBus::TransferProgress> transfers);
 
     private:
         ReceiverPrivate* d;
 
         void question(QString question, std::function<void()> yes, std::function<void()> no);
-        QList<TransferProgress> transfers();
+        QList<QNearbyShare::DBus::TransferProgress> transfers();
 };
-
-Q_DECLARE_METATYPE(TransferProgress)
-Q_DECLARE_METATYPE(QList<TransferProgress>)
 
 #endif // QNEARBYSHARE_RECEIVER_H

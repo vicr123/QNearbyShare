@@ -21,28 +21,29 @@
  */
 
 //
-// Created by victor on 1/05/23.
+// Created by victor on 3/05/23.
 //
 
-#ifndef QNEARBYSHARE_DEVICEDISCOVERY_H
-#define QNEARBYSHARE_DEVICEDISCOVERY_H
+#ifndef QNEARBYSHARE_TRANSFERPROGRESS_H
+#define QNEARBYSHARE_TRANSFERPROGRESS_H
 
-#include "console.h"
-#include <QObject>
+#include <QDBusArgument>
+#include <QString>
 
-struct DeviceDiscoveryPrivate;
-class DeviceDiscovery : public QObject {
-        Q_OBJECT
-    public:
-        explicit DeviceDiscovery(Console* console, QObject* parent = nullptr);
-        ~DeviceDiscovery() override;
+namespace QNearbyShare::DBus {
+    struct TransferProgress {
+            QString fileName;
+            QString destination;
+            quint64 size;
 
-        QString exec(QString* peerName);
+            quint64 transferred = 0;
+            bool complete = false;
+    };
 
-    private:
-        DeviceDiscoveryPrivate* d;
+    QDBusArgument& operator<<(QDBusArgument& argument, const TransferProgress& transferProgress);
+    const QDBusArgument& operator>>(const QDBusArgument& argument, TransferProgress& transferProgress);
+} // namespace QNearbyShare::DBus
 
-        QList<QPair<QString, QString>> printAvailableTargets();
-};
+Q_DECLARE_METATYPE(QNearbyShare::DBus::TransferProgress)
 
-#endif // QNEARBYSHARE_DEVICEDISCOVERY_H
+#endif // QNEARBYSHARE_TRANSFERPROGRESS_H

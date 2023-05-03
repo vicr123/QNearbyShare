@@ -43,19 +43,31 @@ class NearbySocket : public QObject {
         void sendPacket(const QByteArray& packet);
         void sendPacket(const google::protobuf::MessageLite& message);
 
+        enum PayloadType {
+            Bytes,
+            File
+        };
+
         void sendPayloadPacket(const QByteArray& packet);
         void sendPayloadPacket(const google::protobuf::MessageLite& message);
+        void sendPayloadPacket(const QByteArray& packet, qint64 id, PayloadType payloadType = Bytes, qint64 offset = 0, bool lastChunk = true);
+        void sendPayloadPacket(const google::protobuf::MessageLite& message, qint64 id);
 
         void insertPendingPayload(qint64 id, const AbstractNearbyPayloadPtr& payload);
 
         QByteArray authString();
+
+        void setPeerName(QString peerName);
         QString peerName();
+
+        void disconnect();
 
     signals:
         void readyForEncryptedMessages();
         void messageReceived(AbstractNearbyPayloadPtr payload);
         void errorOccurred();
         void disconnected();
+        void readyForNextPacket();
 
     private:
         NearbySocketPrivate* d;
@@ -69,6 +81,7 @@ class NearbySocket : public QObject {
         void sendConnectionRequest();
         void setupDiffieHellman(const QByteArray& x, const QByteArray& y);
         void sendConnectionResponse();
+        void writeNextPacket();
 };
 
 #endif // QNEARBYSHARE_NEARBYSOCKET_H

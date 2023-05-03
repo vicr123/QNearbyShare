@@ -29,9 +29,12 @@
 #include "wire_format.pb.h"
 
 #include <QDir>
+#include <QMimeDatabase>
+#include <QRandomGenerator64>
 #include <QStandardPaths>
 #include <QTcpSocket>
 #include <QTextStream>
+#include <utility>
 
 struct NearbyShareClientPrivate {
         NearbySocket* socket = nullptr;
@@ -39,14 +42,16 @@ struct NearbyShareClientPrivate {
 
         QMap<qint64, AbstractNearbyPayloadPtr> filePayloads;
         NearbyShareClient::State state = NearbyShareClient::State::NotReady;
+        NearbyShareClient::FailedReason failedReason = NearbyShareClient::FailedReason::Unknown;
 
-        bool isServer;
-
-        enum InternalState {
-            WaitingForNearbyConnection,
-            WaitingForPairedKeyEncryption
+        struct LocalFileStats {
+                quint64 progress = 0;
+                qint64 payloadId = 0;
         };
-        InternalState internalState = WaitingForNearbyConnection;
+
+        bool isServer = false;
+        QList<NearbyShareClient::LocalFile> filesToSend;
+        QList<LocalFileStats> filesToSendStats;
 };
 
 NearbyShareClient::NearbyShareClient(QObject* parent) :
@@ -73,8 +78,6 @@ void NearbyShareClient::readyForEncryptedMessages() {
     nearbyFrame.set_allocated_v1(v1);
 
     d->socket->sendPayloadPacket(nearbyFrame);
-    //    }
-    d->internalState = NearbyShareClientPrivate::WaitingForPairedKeyEncryption;
 }
 
 void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload) {
@@ -123,7 +126,39 @@ void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload)
                     break;
                 }
             case sharing::nearby::V1Frame_FrameType_RESPONSE:
-                break;
+                {
+                    if (d->state == State::WaitingForUserAccept) {
+                        const auto& response = v1.connection_response();
+
+                        if (response.status() == sharing::nearby::ConnectionResponseFrame_Status_ACCEPT) {
+                            // Start sending files!
+                            setState(State::Transferring);
+
+                            connect(d->socket, &NearbySocket::readyForNextPacket, this, &NearbyShareClient::writeNextSendPackets);
+                            this->writeNextSendPackets();
+                        } else {
+                            switch (response.status()) {
+                                case sharing::nearby::ConnectionResponseFrame_Status_REJECT:
+                                    d->failedReason = FailedReason::RemoteDeclined;
+                                    break;
+                                case sharing::nearby::ConnectionResponseFrame_Status_NOT_ENOUGH_SPACE:
+                                    d->failedReason = FailedReason::RemoteOutOfSpace;
+                                    break;
+                                case sharing::nearby::ConnectionResponseFrame_Status_UNSUPPORTED_ATTACHMENT_TYPE:
+                                    d->failedReason = FailedReason::RemoteUnsupported;
+                                    break;
+                                case sharing::nearby::ConnectionResponseFrame_Status_TIMED_OUT:
+                                    d->failedReason = FailedReason::RemoteTimedOut;
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            setState(State::Failed);
+                        }
+                    }
+                    break;
+                }
             case sharing::nearby::V1Frame_FrameType_PAIRED_KEY_ENCRYPTION:
                 {
                     auto pke = v1.paired_key_encryption();
@@ -137,13 +172,19 @@ void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload)
                 {
                     if (!d->isServer) {
                         // Introduce the files to be sent
+                        QMimeDatabase mimeDb;
+
                         auto introduction = new sharing::nearby::IntroductionFrame();
-                        auto f = introduction->add_file_metadata();
-                        f->set_name("MY_FILE.png");
-                        f->set_mime_type("image/png");
-                        f->set_id(10);
-                        f->set_size(3000);
-                        f->set_payload_id(6000);
+                        for (auto i = 0; i < d->filesToSend.length(); i++) {
+                            auto file = d->filesToSend.at(i);
+                            auto stat = d->filesToSendStats.at(i);
+                            auto f = introduction->add_file_metadata();
+                            f->set_name(file.fileName.toStdString());
+                            f->set_mime_type(mimeDb.mimeTypeForFile(file.fileName).name().toStdString());
+                            f->set_id(QRandomGenerator64::global()->generate());
+                            f->set_size(file.size);
+                            f->set_payload_id(stat.payloadId);
+                        }
 
                         auto v1 = new sharing::nearby::V1Frame();
                         v1->set_type(sharing::nearby::V1Frame_FrameType_INTRODUCTION);
@@ -154,6 +195,7 @@ void NearbyShareClient::messageReceived(const AbstractNearbyPayloadPtr& payload)
                         nearbyFrame.set_allocated_v1(v1);
 
                         d->socket->sendPayloadPacket(nearbyFrame);
+                        setState(State::WaitingForUserAccept);
                     }
                     break;
                 }
@@ -246,17 +288,30 @@ void NearbyShareClient::rejectTransfer() {
 }
 
 QList<NearbyShareClient::TransferredFile> NearbyShareClient::filesToTransfer() {
-    auto files = d->files;
-
-    for (auto& file : files) {
-        if (d->filePayloads.contains(file.id)) {
-            auto payload = d->filePayloads.value(file.id);
-            file.complete = payload->completed();
-            file.transferred = payload->bytesTransferred();
+    if (d->isServer) {
+        auto files = d->files;
+        for (auto& file : files) {
+            if (d->filePayloads.contains(file.id)) {
+                auto payload = d->filePayloads.value(file.id);
+                file.complete = payload->completed();
+                file.transferred = payload->bytesTransferred();
+            }
         }
+        return files;
+    } else {
+        QList<NearbyShareClient::TransferredFile> files;
+        for (auto i = 0; i < d->filesToSend.length(); i++) {
+            auto file = d->filesToSend.at(i);
+            auto stat = d->filesToSendStats.at(i);
+            NearbyShareClient::TransferredFile tf;
+            tf.fileName = file.fileName;
+            tf.size = file.size;
+            tf.transferred = stat.progress;
+            tf.complete = tf.size == tf.transferred;
+            files.append(tf);
+        }
+        return files;
     }
-
-    return files;
 }
 
 QString NearbyShareClient::pin() {
@@ -272,8 +327,13 @@ NearbyShareClient::State NearbyShareClient::state() {
 }
 
 void NearbyShareClient::setState(NearbyShareClient::State state) {
+    // TODO: Disconnect on failure
     d->state = state;
     emit stateChanged(state);
+
+    if (state == State::Complete || state == State::Failed) {
+        d->socket->disconnect();
+    }
 }
 
 void NearbyShareClient::checkIfComplete() {
@@ -302,11 +362,18 @@ NearbyShareClient* NearbyShareClient::clientForReceive(QIODevice* device) {
     return client;
 }
 
-NearbyShareClient* NearbyShareClient::clientForSend(QIODevice* device, QList<LocalFile> files) {
+NearbyShareClient* NearbyShareClient::clientForSend(QIODevice* device, QString peerName, QList<LocalFile> files) {
     auto client = new NearbyShareClient();
     client->d->isServer = false;
 
+    for (auto file : files) {
+        client->d->filesToSendStats.append({0,
+            static_cast<qint64>(QRandomGenerator64::global()->generate())});
+    }
+    client->d->filesToSend = std::move(files);
+
     client->d->socket = new NearbySocket(device, false, client);
+    client->d->socket->setPeerName(std::move(peerName));
 
     connect(client->d->socket, &NearbySocket::readyForEncryptedMessages, client, &NearbyShareClient::readyForEncryptedMessages);
     connect(client->d->socket, &NearbySocket::messageReceived, client, &NearbyShareClient::messageReceived);
@@ -336,4 +403,36 @@ QIODevice* NearbyShareClient::resolveConnectionString(const QString& connectionS
     }
 
     return nullptr;
+}
+
+NearbyShareClient::FailedReason NearbyShareClient::failedReason() {
+    return d->failedReason;
+}
+
+bool NearbyShareClient::isSending() {
+    return !d->isServer;
+}
+
+void NearbyShareClient::writeNextSendPackets() {
+    if (d->state != State::Transferring || d->isServer) return;
+    bool complete = true;
+    for (auto i = 0; i < d->filesToSend.length(); i++) {
+        auto file = d->filesToSend.at(i);
+        auto stat = d->filesToSendStats.at(i);
+        if (stat.progress == file.size) continue;
+
+        auto buf = file.device->read(1048576);
+        d->socket->sendPayloadPacket(buf, stat.payloadId, NearbySocket::File, stat.progress, stat.progress + buf.length() == file.size);
+        stat.progress += buf.length();
+
+        d->filesToSendStats.replace(i, stat);
+        complete = false;
+    }
+
+    emit filesToTransferChanged();
+
+    if (complete) {
+        setState(State::Complete);
+        d->socket->disconnect();
+    }
 }

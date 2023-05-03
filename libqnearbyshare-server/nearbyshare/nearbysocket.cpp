@@ -37,7 +37,9 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QtEndian>
+#include <utility>
 
+#include <QQueue>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 
@@ -87,6 +89,9 @@ struct NearbySocketPrivate {
 
         QTimer* keepaliveTimer;
         QMap<qint64, AbstractNearbyPayloadPtr> pendingPayloads;
+
+        QQueue<QByteArray> pendingPackets;
+        quint64 pendingWrite = 0;
 };
 
 NearbySocket::NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent) :
@@ -107,6 +112,12 @@ NearbySocket::NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent) 
         d->state = NearbySocketPrivate::Closed;
         emit disconnected();
     });
+    connect(d->io, &QIODevice::bytesWritten, this, [this](qint64 bytes) {
+        d->pendingWrite -= bytes;
+        if (d->pendingWrite == 0) {
+            this->writeNextPacket();
+        }
+    });
 
     if (isServer) {
         d->state = NearbySocketPrivate::WaitingForConnectionRequest;
@@ -114,12 +125,9 @@ NearbySocket::NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent) 
         d->state = NearbySocketPrivate::ConnectingToPeer;
 
         if (auto tcp = qobject_cast<QTcpSocket*>(d->io)) {
-            //            if (tcp->state() == QAbstractSocket::ConnectedState) {
-            //            } else {
-            //                connect(tcp, &QTcpSocket::connected, this, &NearbySocket::sendConnectionRequest);
-            //            }
-            connect(tcp, &QTcpSocket::errorOccurred, this, [](QTcpSocket::SocketError error) {
-                QTextStream(stdout) << "Unable to connect to client\n";
+            connect(tcp, &QTcpSocket::errorOccurred, this, [this](QTcpSocket::SocketError error) {
+                emit errorOccurred();
+                emit disconnected();
             });
             this->sendConnectionRequest();
         } else {
@@ -464,8 +472,11 @@ void NearbySocket::sendPacket(const QByteArray& packet) {
     quint32 packetLength = plainPacket.length();
     auto bePacketLength = qToBigEndian(packetLength);
 
-    d->io->write(reinterpret_cast<char*>(&bePacketLength), 4);
-    d->io->write(plainPacket);
+    plainPacket.prepend(reinterpret_cast<char*>(&bePacketLength), 4);
+    if (!plainPacket.isEmpty()) {
+        d->pendingPackets.enqueue(plainPacket);
+    }
+    this->writeNextPacket();
 }
 
 void NearbySocket::sendPacket(const google::protobuf::MessageLite& message) {
@@ -580,14 +591,32 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
 void NearbySocket::sendPayloadPacket(const QByteArray& packet) {
     auto id = QRandomGenerator64::global()->generate();
 
+    sendPayloadPacket(packet, id);
+}
+
+void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite& message) {
+    sendPayloadPacket(QByteArray::fromStdString(message.SerializeAsString()));
+}
+
+void NearbySocket::sendPayloadPacket(const QByteArray& packet, qint64 id, PayloadType payloadType, qint64 offset, bool lastChunk) {
+    location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType pbPayloadType;
+    switch (payloadType) {
+        case Bytes:
+            pbPayloadType = location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES;
+            break;
+        case File:
+            pbPayloadType = location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_FILE;
+            break;
+    }
+
     auto payloadHeader1 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
     payloadHeader1->set_id(id);
-    payloadHeader1->set_type(location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES);
+    payloadHeader1->set_type(pbPayloadType);
     payloadHeader1->set_total_size(packet.length());
     payloadHeader1->set_is_sensitive(false);
 
     auto payloadChunk1 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();
-    payloadChunk1->set_offset(0);
+    payloadChunk1->set_offset(offset);
     payloadChunk1->set_flags(0);
     payloadChunk1->set_body(packet.toStdString());
 
@@ -605,34 +634,36 @@ void NearbySocket::sendPayloadPacket(const QByteArray& packet) {
     offlineFrame1.set_allocated_v1(v1_1);
     sendPacket(offlineFrame1);
 
-    auto payloadHeader2 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
-    payloadHeader2->set_id(id);
-    payloadHeader2->set_type(location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType_BYTES);
-    payloadHeader2->set_total_size(packet.length());
-    payloadHeader2->set_is_sensitive(false);
+    if (lastChunk) {
+        auto payloadHeader2 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
+        payloadHeader2->set_id(id);
+        payloadHeader2->set_type(pbPayloadType);
+        payloadHeader2->set_total_size(packet.length());
+        payloadHeader2->set_is_sensitive(false);
 
-    auto payloadChunk2 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();
-    payloadChunk2->set_offset(packet.length());
-    payloadChunk2->set_flags(location::nearby::connections::PayloadTransferFrame_PayloadChunk_Flags_LAST_CHUNK);
-    payloadChunk2->set_body(QByteArray().toStdString());
+        auto payloadChunk2 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();
+        payloadChunk2->set_offset(packet.length() + offset);
+        payloadChunk2->set_flags(location::nearby::connections::PayloadTransferFrame_PayloadChunk_Flags_LAST_CHUNK);
+        payloadChunk2->set_body(QByteArray().toStdString());
 
-    auto payloadTransfer2 = new location::nearby::connections::PayloadTransferFrame();
-    payloadTransfer2->set_packet_type(location::nearby::connections::PayloadTransferFrame_PacketType_DATA);
-    payloadTransfer2->set_allocated_payload_header(payloadHeader2);
-    payloadTransfer2->set_allocated_payload_chunk(payloadChunk2);
+        auto payloadTransfer2 = new location::nearby::connections::PayloadTransferFrame();
+        payloadTransfer2->set_packet_type(location::nearby::connections::PayloadTransferFrame_PacketType_DATA);
+        payloadTransfer2->set_allocated_payload_header(payloadHeader2);
+        payloadTransfer2->set_allocated_payload_chunk(payloadChunk2);
 
-    auto v1_2 = new location::nearby::connections::V1Frame();
-    v1_2->set_type(location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER);
-    v1_2->set_allocated_payload_transfer(payloadTransfer2);
+        auto v1_2 = new location::nearby::connections::V1Frame();
+        v1_2->set_type(location::nearby::connections::V1Frame_FrameType_PAYLOAD_TRANSFER);
+        v1_2->set_allocated_payload_transfer(payloadTransfer2);
 
-    location::nearby::connections::OfflineFrame offlineFrame2;
-    offlineFrame2.set_version(location::nearby::connections::OfflineFrame_Version_V1);
-    offlineFrame2.set_allocated_v1(v1_2);
-    sendPacket(offlineFrame2);
+        location::nearby::connections::OfflineFrame offlineFrame2;
+        offlineFrame2.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+        offlineFrame2.set_allocated_v1(v1_2);
+        sendPacket(offlineFrame2);
+    }
 }
 
-void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite& message) {
-    sendPayloadPacket(QByteArray::fromStdString(message.SerializeAsString()));
+void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite& message, qint64 id) {
+    sendPayloadPacket(QByteArray::fromStdString(message.SerializeAsString()), id);
 }
 
 void NearbySocket::sendKeepalive(bool isAck) {
@@ -771,4 +802,43 @@ void NearbySocket::sendConnectionResponse() {
     offlineResponse.set_version(location::nearby::connections::OfflineFrame_Version_V1);
     offlineResponse.set_allocated_v1(v1Response);
     sendPacket(offlineResponse);
+}
+
+void NearbySocket::setPeerName(QString peerName) {
+    d->peerName = std::move(peerName);
+}
+
+void NearbySocket::writeNextPacket() {
+    if (d->pendingWrite != 0) return;
+    if (d->pendingPackets.isEmpty()) {
+        emit readyForNextPacket();
+        return;
+    };
+
+    auto packet = d->pendingPackets.dequeue();
+    if (packet.isEmpty()) {
+        // This is a disconnect instruction
+        d->io->close();
+    } else {
+        d->pendingWrite += packet.length();
+        d->io->write(packet);
+    }
+}
+
+void NearbySocket::disconnect() {
+    // Send Disconnect
+    auto disconnection = new location::nearby::connections::DisconnectionFrame();
+    disconnection->set_request_safe_to_disconnect(true);
+
+    auto v1Response = new location::nearby::connections::V1Frame();
+    v1Response->set_type(location::nearby::connections::V1Frame_FrameType_DISCONNECTION);
+    v1Response->set_allocated_disconnection(disconnection);
+
+    location::nearby::connections::OfflineFrame offlineResponse;
+    offlineResponse.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+    offlineResponse.set_allocated_v1(v1Response);
+    sendPacket(offlineResponse);
+
+    d->pendingPackets.enqueue({});
+    writeNextPacket();
 }

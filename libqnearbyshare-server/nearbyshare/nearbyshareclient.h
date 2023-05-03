@@ -41,7 +41,7 @@ class NearbyShareClient : public QObject {
         };
 
         static NearbyShareClient* clientForReceive(QIODevice* device);
-        static NearbyShareClient* clientForSend(QIODevice* device, QList<LocalFile> files);
+        static NearbyShareClient* clientForSend(QIODevice* device, QString peerName, QList<LocalFile> files);
         static QIODevice* resolveConnectionString(const QString& connectionString);
 
         enum class State {
@@ -50,6 +50,14 @@ class NearbyShareClient : public QObject {
             Transferring,
             Complete,
             Failed
+        };
+
+        enum class FailedReason {
+            Unknown,
+            RemoteDeclined,
+            RemoteOutOfSpace,
+            RemoteUnsupported,
+            RemoteTimedOut
         };
 
         struct TransferredFile {
@@ -64,7 +72,10 @@ class NearbyShareClient : public QObject {
 
         static QString pinCodeFromAuthString(const QByteArray& authString);
 
+        bool isSending();
+
         State state();
+        FailedReason failedReason();
         QList<TransferredFile> filesToTransfer();
         QString peerName();
         QString pin();
@@ -87,6 +98,8 @@ class NearbyShareClient : public QObject {
 
         void sendPairedKeyEncryptionResponse();
         void checkIfComplete();
+
+        void writeNextSendPackets();
 };
 
 #endif // QNEARBYSHARE_NEARBYSHARECLIENT_H
