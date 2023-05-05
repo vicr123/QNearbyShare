@@ -492,6 +492,7 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
     auto calculatedSignature = Cryptography::hmacSha256Signature(QByteArray::fromStdString(message.header_and_body()), d->receiveHmacKey);
     if (signature != calculatedSignature) {
         QTextStream(stderr) << "Received secure packet with wrong signature\n";
+        this->disconnect();
         return;
     }
 
@@ -501,11 +502,13 @@ void NearbySocket::processSecureFrame(const QByteArray& frame) {
 
     if (headerAndBody.header().encryption_scheme() != securemessage::AES_256_CBC) {
         QTextStream(stderr) << "Received secure packet with wrong encryption scheme\n";
+        this->disconnect();
         return;
     }
 
     if (headerAndBody.header().signature_scheme() != securemessage::HMAC_SHA256) {
         QTextStream(stderr) << "Received secure packet with wrong signature scheme\n";
+        this->disconnect();
         return;
     }
 

@@ -433,6 +433,5 @@ void NearbyShareClient::writeNextSendPackets() {
 
     if (complete) {
         setState(State::Complete);
-        d->socket->disconnect();
     }
 }

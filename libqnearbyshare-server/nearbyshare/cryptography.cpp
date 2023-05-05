@@ -41,6 +41,7 @@ QByteArray Cryptography::hmacSha256Signature(const QByteArray& data, const QByte
     code.addData(data);
     return code.result();
 }
+
 QByteArray Cryptography::aes256cbcDecrypt(const QByteArray& ciphertext, const QByteArray& key, const QByteArray& iv) {
     return aes256cbc(ciphertext, key, iv, false);
 }
