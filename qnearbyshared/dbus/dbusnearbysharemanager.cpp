@@ -23,6 +23,7 @@
  */
 
 #include "dbusnearbysharemanager.h"
+#include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusMetaType>
 #include <QFile>
@@ -150,4 +151,8 @@ QDBusObjectPath DBusNearbyShareManager::registerNewShare(NearbyShareClient* clie
     emit NewSession(QDBusObjectPath(path));
 
     return QDBusObjectPath(path);
+}
+
+void DBusNearbyShareManager::Quit() {
+    QCoreApplication::quit();
 }

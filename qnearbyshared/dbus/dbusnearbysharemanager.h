@@ -53,6 +53,7 @@ class DBusNearbyShareManager : public QObject {
         Q_SCRIPTABLE QDBusObjectPath StartListening(const QDBusMessage& message);
         Q_SCRIPTABLE QDBusObjectPath DiscoverTargets(const QDBusMessage& message);
         Q_SCRIPTABLE QDBusObjectPath SendToTarget(const QString& connectionString, QString peerName, const QList<QNearbyShare::DBus::SendingFile>& files, const QDBusMessage& message);
+        Q_SCRIPTABLE void Quit();
 
     signals:
         void isRunningChanged(bool running);
