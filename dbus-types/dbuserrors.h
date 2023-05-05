@@ -20,26 +20,19 @@
  * SOFTWARE.
  */
 
-#include <QCoreApplication>
-#include <QTextStream>
-#include <dbusconstants.h>
-#include <qnearbysharedbus.h>
+//
+// Created by victor on 5/05/23.
+//
 
-#include <QDBusConnection>
+#ifndef QNEARBYSHARE_DBUSERRORS_H
+#define QNEARBYSHARE_DBUSERRORS_H
 
-#include "dbus/dbusnearbysharemanager.h"
+#include <QString>
 
-int main(int argc, char *argv[]) {
-    QCoreApplication a(argc, argv);
+namespace QNearbyShare::DBus::Error {
+    const QString INVALID_STATE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidState");
+    const QString INVALID_DIRECTION = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidDirection");
+    const QString INVALID_CONNECTION_STRING = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidConnectionString");
+} // namespace QNearbyShare::DBus::Error
 
-    QNearbyShare::DBus::registerDBusMetaTypes();
-
-    auto manager = new DBusNearbyShareManager();
-
-    QDBusConnection::sessionBus().registerObject(QNearbyShare::DBus::DBUS_ROOT_PATH, manager, QDBusConnection::ExportScriptableContents);
-    QDBusConnection::sessionBus().registerService(QNearbyShare::DBus::DBUS_SERVICE);
-
-    QTextStream(stdout) << "Server Running\n";
-
-    return QCoreApplication::exec();
-}
+#endif // QNEARBYSHARE_DBUSERRORS_H

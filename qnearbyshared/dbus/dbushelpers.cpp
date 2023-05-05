@@ -26,7 +26,6 @@
 
 #include <QDBusConnection>
 #include <QDBusMessage>
-#include "constants.h"
 
 void DBusHelpers::emitPropertiesChangedSignal(QString path, QString interface, QString property, QVariant newValue) {
     auto signal = QDBusMessage::createSignal(path, QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("PropertiesChanged"));

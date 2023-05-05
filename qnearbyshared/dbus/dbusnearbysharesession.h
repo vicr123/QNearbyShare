@@ -25,7 +25,6 @@
 #ifndef QNEARBYSHARE_DBUSNEARBYSHARESESSION_H
 #define QNEARBYSHARE_DBUSNEARBYSHARESESSION_H
 
-#include "constants.h"
 #include <QDBusArgument>
 #include <QDBusMessage>
 #include <QObject>

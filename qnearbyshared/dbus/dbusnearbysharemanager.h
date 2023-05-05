@@ -25,7 +25,6 @@
 #ifndef QNEARBYSHARE_DBUSNEARBYSHAREMANAGER_H
 #define QNEARBYSHARE_DBUSNEARBYSHAREMANAGER_H
 
-#include "constants.h"
 #include <QDBusMessage>
 #include <QDBusObjectPath>
 #include <QDBusUnixFileDescriptor>

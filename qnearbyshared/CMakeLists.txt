@@ -11,7 +11,6 @@ set(SOURCES
 )
 
 set(HEADERS
-        dbus/constants.h
         dbus/dbusnearbysharemanager.h
         dbus/dbusnearbysharesession.h
         dbus/dbushelpers.h

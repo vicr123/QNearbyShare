@@ -26,6 +26,8 @@
 #include <QDBusConnection>
 #include <QDBusMetaType>
 #include <QFile>
+#include <dbusconstants.h>
+#include <dbuserrors.h>
 #include <nearbyshare/nearbyshareserver.h>
 #include <utility>
 
@@ -59,7 +61,7 @@ DBusNearbyShareManager::DBusNearbyShareManager(QObject* parent) :
     //    this->setRunning(true);
 
     connect(this, &DBusNearbyShareManager::isRunningChanged, this, [](bool isRunning) {
-        DBusHelpers::emitPropertiesChangedSignal(QNearbyShare::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", "IsRunning", isRunning);
+        DBusHelpers::emitPropertiesChangedSignal(QNearbyShare::DBus::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", "IsRunning", isRunning);
     });
 }
 
@@ -90,7 +92,7 @@ void DBusNearbyShareManager::setRunning(bool running) {
 }
 
 QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage& message) {
-    auto path = QStringLiteral("%1/listeners/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->listenerNum);
+    auto path = QStringLiteral("%1/listeners/%2").arg(QNearbyShare::DBus::DBUS_ROOT_PATH).arg(d->listenerNum);
     d->listenerNum++;
     d->currentlyListening++;
 
@@ -108,7 +110,7 @@ QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage& messa
 }
 
 QDBusObjectPath DBusNearbyShareManager::DiscoverTargets(const QDBusMessage& message) {
-    auto path = QStringLiteral("%1/targetDiscovery/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->targetDiscoveryNum);
+    auto path = QStringLiteral("%1/targetDiscovery/%2").arg(QNearbyShare::DBus::DBUS_ROOT_PATH).arg(d->targetDiscoveryNum);
     d->targetDiscoveryNum++;
 
     new DBusNearbyShareDiscovery(message.service(), path, this);
@@ -120,7 +122,7 @@ QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionSt
 
     if (!device) {
         // Error
-        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBUS_ERROR_INVALID_CONNECTION_STRING, "The connection string is invalid"));
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBus::Error::INVALID_CONNECTION_STRING, "The connection string is invalid"));
         return {};
     }
 
@@ -140,7 +142,7 @@ QDBusObjectPath DBusNearbyShareManager::SendToTarget(const QString& connectionSt
 
 QDBusObjectPath DBusNearbyShareManager::registerNewShare(NearbyShareClient* client) {
     d->sessionNum++;
-    auto path = QStringLiteral("%1/sessions/%2").arg(QNearbyShare::DBUS_ROOT_PATH).arg(d->sessionNum);
+    auto path = QStringLiteral("%1/sessions/%2").arg(QNearbyShare::DBus::DBUS_ROOT_PATH).arg(d->sessionNum);
     auto session = new DBusNearbyShareSession(client, path);
     QDBusConnection::sessionBus().registerObject(path, session, QDBusConnection::ExportScriptableContents);
     d->sessions.append(QDBusObjectPath(path));

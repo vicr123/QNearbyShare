@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) 2023 Victor Tran
  *
@@ -22,18 +20,18 @@
  * SOFTWARE.
  */
 
-#ifndef QNEARBYSHARE_CONSTANTS_H
-#define QNEARBYSHARE_CONSTANTS_H
+//
+// Created by victor on 5/05/23.
+//
+
+#ifndef QNEARBYSHARE_DBUSCONSTANTS_H
+#define QNEARBYSHARE_DBUSCONSTANTS_H
 
 #include <QString>
 
-namespace QNearbyShare {
+namespace QNearbyShare::DBus {
     const QString DBUS_SERVICE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE);
     const QString DBUS_ROOT_PATH = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH);
+} // namespace QNearbyShare::DBus
 
-    const QString DBUS_ERROR_INVALID_STATE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidState");
-    const QString DBUS_ERROR_INVALID_DIRECTION = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidDirection");
-    const QString DBUS_ERROR_INVALID_CONNECTION_STRING = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidConnectionString");
-} // namespace QNearbyShare
-
-#endif // QNEARBYSHARE_CONSTANTS_H
+#endif // QNEARBYSHARE_DBUSCONSTANTS_H

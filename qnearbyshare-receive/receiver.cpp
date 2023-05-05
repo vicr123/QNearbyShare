@@ -30,6 +30,7 @@
 #include <QDBusMetaType>
 #include <QLocale>
 #include <QSocketNotifier>
+#include <dbusconstants.h>
 
 #include <stdio.h>
 #include <sys/ioctl.h>
@@ -43,7 +44,7 @@ struct ReceiverPrivate {
 Receiver::Receiver(QObject* parent) :
     QObject(parent) {
     d = new ReceiverPrivate();
-    d->manager = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager");
+    d->manager = new QDBusInterface(QNearbyShare::DBus::DBUS_SERVICE, QNearbyShare::DBus::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager");
 }
 
 Receiver::~Receiver() {
@@ -56,7 +57,7 @@ bool Receiver::startListening() {
         return false;
     }
 
-    QDBusConnection::sessionBus().connect(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", "NewSession", this, SLOT(newSession(QDBusObjectPath)));
+    QDBusConnection::sessionBus().connect(QNearbyShare::DBus::DBUS_SERVICE, QNearbyShare::DBus::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", "NewSession", this, SLOT(newSession(QDBusObjectPath)));
 
     QTextStream(stderr) << tr("Awaiting a Nearby Share connection.") << "\n";
     QTextStream(stderr) << tr("Use Nearby Share on another device to connect to this device to share files.") << "\n";
@@ -66,8 +67,8 @@ bool Receiver::startListening() {
 }
 
 void Receiver::newSession(QDBusObjectPath path) { // NOLINT(performance-unnecessary-value-param)
-    d->session = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, path.path(), QNEARBYSHARE_DBUS_SERVICE ".Session");
-    QDBusConnection::sessionBus().connect(QNEARBYSHARE_DBUS_SERVICE, path.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString, QVariantMap, QStringList)));
+    d->session = new QDBusInterface(QNearbyShare::DBus::DBUS_SERVICE, path.path(), QNEARBYSHARE_DBUS_SERVICE ".Session");
+    QDBusConnection::sessionBus().connect(QNearbyShare::DBus::DBUS_SERVICE, path.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString, QVariantMap, QStringList)));
 
     auto transfers = this->transfers();
 

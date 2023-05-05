@@ -28,6 +28,7 @@
 #include <QDBusArgument>
 #include <QDBusInterface>
 #include <QThread>
+#include <dbusconstants.h>
 #include <nearbysharetarget.h>
 
 struct DeviceDiscoveryPrivate {
@@ -42,7 +43,7 @@ DeviceDiscovery::DeviceDiscovery(Console* console, QObject* parent) :
     QObject(parent) {
     d = new DeviceDiscoveryPrivate();
     d->console = console;
-    d->manager = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", QDBusConnection::sessionBus(), this);
+    d->manager = new QDBusInterface(QNearbyShare::DBus::DBUS_SERVICE, QNearbyShare::DBus::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", QDBusConnection::sessionBus(), this);
 
     auto reply = d->manager->call("DiscoverTargets");
     if (reply.type() != QDBusMessage::ReplyMessage) {
@@ -50,7 +51,7 @@ DeviceDiscovery::DeviceDiscovery(Console* console, QObject* parent) :
     }
 
     auto targetDiscoveryPath = reply.arguments().first().value<QDBusObjectPath>();
-    d->targetDiscovery = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, targetDiscoveryPath.path(), QNEARBYSHARE_DBUS_SERVICE ".TargetDiscovery", QDBusConnection::sessionBus(), this);
+    d->targetDiscovery = new QDBusInterface(QNearbyShare::DBus::DBUS_SERVICE, targetDiscoveryPath.path(), QNEARBYSHARE_DBUS_SERVICE ".TargetDiscovery", QDBusConnection::sessionBus(), this);
 }
 
 DeviceDiscovery::~DeviceDiscovery() {

@@ -28,6 +28,8 @@
 #include <QCoreApplication>
 #include <QDBusInterface>
 #include <QFileInfo>
+#include <dbusconstants.h>
+#include <dbuserrors.h>
 #include <sendingfile.h>
 
 #include <stdio.h>
@@ -42,7 +44,7 @@ struct SendJobPrivate {
 SendJob::SendJob(QObject* parent) :
     QObject(parent) {
     d = new SendJobPrivate();
-    d->manager = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", QDBusConnection::sessionBus(), this);
+    d->manager = new QDBusInterface(QNearbyShare::DBus::DBUS_SERVICE, QNearbyShare::DBus::DBUS_ROOT_PATH, QNEARBYSHARE_DBUS_SERVICE ".Manager", QDBusConnection::sessionBus(), this);
 }
 
 SendJob::~SendJob() {
@@ -59,15 +61,15 @@ bool SendJob::send(const QString& connectionString, const QString& peerName, con
 
     auto reply = d->manager->call("SendToTarget", connectionString, peerName, QVariant::fromValue(sendingFiles));
     if (reply.type() != QDBusMessage::ReplyMessage) {
-        if (reply.errorName() == QNEARBYSHARE_DBUS_SERVICE ".InvalidConnectionString") {
+        if (reply.errorName() == QNearbyShare::DBus::Error::INVALID_CONNECTION_STRING) {
             QTextStream(stderr) << "<!> " << tr("Invalid connection string.") << "\n";
         }
         return false;
     }
 
     auto sessionPath = reply.arguments().first().value<QDBusObjectPath>();
-    d->session = new QDBusInterface(QNEARBYSHARE_DBUS_SERVICE, sessionPath.path(), QNEARBYSHARE_DBUS_SERVICE ".Session", QDBusConnection::sessionBus(), this);
-    QDBusConnection::sessionBus().connect(QNEARBYSHARE_DBUS_SERVICE, sessionPath.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString, QVariantMap, QStringList)));
+    d->session = new QDBusInterface(QNearbyShare::DBus::DBUS_SERVICE, sessionPath.path(), QNEARBYSHARE_DBUS_SERVICE ".Session", QDBusConnection::sessionBus(), this);
+    QDBusConnection::sessionBus().connect(QNearbyShare::DBus::DBUS_SERVICE, sessionPath.path(), "org.freedesktop.DBus.Properties", "PropertiesChanged", this, SLOT(sessionPropertiesChanged(QString, QVariantMap, QStringList)));
     QDBusConnection::sessionBus().connect(d->session->service(), d->session->path(), d->session->interface(), "TransfersChanged", this, SLOT(transfersChanged(QList<QNearbyShare::DBus::TransferProgress>)));
 
     return true;
