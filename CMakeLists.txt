@@ -19,7 +19,9 @@ include(GNUInstallDirs)
 
 enable_testing()
 
-add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE="com.vicr123.qnearbyshare")
+set(QNEARBYSHARE_DBUS_SERVICE "com.vicr123.qnearbyshare")
+
+add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE="${QNEARBYSHARE_DBUS_SERVICE}")
 add_compile_definitions(QNEARBYSHARE_DBUS_SERVICE_ROOT_PATH="/com/vicr123/qnearbyshare")
 
 add_subdirectory(dbus-types)
