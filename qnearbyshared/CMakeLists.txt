@@ -29,6 +29,6 @@ configure_file(com.vicr123.qnearbyshare.service com.vicr123.qnearbyshare.service
 install(TARGETS QNearbyShare-daemon
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/com.vicr123.qnearbyshare.daemon.service
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/com.vicr123.qnearbyshare.service
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/dbus-1/services
         )
