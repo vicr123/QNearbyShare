@@ -92,6 +92,7 @@ struct NearbySocketPrivate {
 
         QQueue<QByteArray> pendingPackets;
         quint64 pendingWrite = 0;
+        bool blockWrite = false;
 };
 
 NearbySocket::NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent) :
@@ -110,6 +111,7 @@ NearbySocket::NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent) 
     connect(d->io, &QIODevice::aboutToClose, this, [this] {
         d->keepaliveTimer->stop();
         d->state = NearbySocketPrivate::Closed;
+        d->blockWrite = true;
         emit disconnected();
     });
     connect(d->io, &QIODevice::bytesWritten, this, [this](qint64 bytes) {
@@ -463,7 +465,7 @@ void NearbySocket::sendPacket(const QByteArray& packet) {
         auto headerAndBodyBytes = QByteArray::fromStdString(headerAndBody.SerializeAsString());
 
         securemessage::SecureMessage message;
-        message.set_signature(Cryptography::hmacSha256Signature(headerAndBodyBytes, d->sendHmacKey));
+        message.set_signature(Cryptography::hmacSha256Signature(headerAndBodyBytes, d->sendHmacKey).toStdString());
         message.set_header_and_body(headerAndBodyBytes.toStdString());
 
         plainPacket = QByteArray::fromStdString(message.SerializeAsString());
@@ -822,9 +824,10 @@ void NearbySocket::writeNextPacket() {
     if (packet.isEmpty()) {
         // This is a disconnect instruction
         d->io->close();
+        d->blockWrite = true;
     } else {
         d->pendingWrite += packet.length();
-        d->io->write(packet);
+        if (!d->blockWrite) d->io->write(packet);
     }
 }
 

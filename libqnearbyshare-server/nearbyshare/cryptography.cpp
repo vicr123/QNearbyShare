@@ -37,9 +37,7 @@ QByteArray Cryptography::randomBytes(qint64 length) {
 }
 
 QByteArray Cryptography::hmacSha256Signature(const QByteArray& data, const QByteArray& key) {
-    QMessageAuthenticationCode code(QCryptographicHash::Sha256, key);
-    code.addData(data);
-    return code.result();
+    return QMessageAuthenticationCode::hash(data, key, QCryptographicHash::Sha256);
 }
 
 QByteArray Cryptography::aes256cbcDecrypt(const QByteArray& ciphertext, const QByteArray& key, const QByteArray& iv) {
