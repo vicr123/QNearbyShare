@@ -28,6 +28,7 @@
 #include "endpointinfo.h"
 #include "nearbyshareconstants.h"
 #include "qzeroconf.h"
+#include <QNetworkInterface>
 
 struct NearbyShareDiscoveryPrivate {
         QZeroConf zeroconf;
@@ -45,8 +46,17 @@ NearbyShareDiscovery::NearbyShareDiscovery(QObject* parent) :
 
         if (endpointInfo.version > 1) return;
 
+        // Filter out ourselves :)
+        if (QNetworkInterface::allAddresses().contains(service->ip())) return;
+
+        // Also filter out duplicates
+        auto connectionString = QStringLiteral("%1:%2:%3").arg("tcp", service->ip().toString(), QString::number(service->port()));
+        for (const auto& target : d->targets) {
+            if (target.connectionString == connectionString) return;
+        }
+
         NearbyShareTarget target;
-        target.connectionString = QStringLiteral("%1:%2:%3").arg("tcp", service->ip().toString(), QString::number(service->port()));
+        target.connectionString = connectionString;
         target.name = endpointInfo.deviceName;
         target.deviceType = endpointInfo.deviceType;
 
