@@ -48,6 +48,8 @@ class DBusNearbyShareManager : public QObject {
         bool isRunning();
         void setRunning(bool running);
 
+        bool startServer();
+
     public slots:
         Q_SCRIPTABLE [[maybe_unused]] QList<QDBusObjectPath> Sessions();
         Q_SCRIPTABLE QDBusObjectPath StartListening(const QDBusMessage& message);

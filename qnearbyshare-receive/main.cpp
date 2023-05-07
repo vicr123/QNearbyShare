@@ -44,7 +44,6 @@ int main(int argc, char* argv[]) {
     Receiver receiver;
 
     if (!receiver.startListening()) {
-        QTextStream(stderr) << "Could not register listener. Is the DBus service running?\n";
         return 1;
     }
 

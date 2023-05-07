@@ -31,6 +31,7 @@
 #include <QLocale>
 #include <QSocketNotifier>
 #include <dbusconstants.h>
+#include <dbuserrors.h>
 
 #include <stdio.h>
 #include <sys/ioctl.h>
@@ -54,6 +55,11 @@ Receiver::~Receiver() {
 bool Receiver::startListening() {
     auto reply = d->manager->call("StartListening");
     if (reply.type() != QDBusMessage::ReplyMessage) {
+        if (reply.errorName() == QNearbyShare::DBus::Error::ZEROCONF_UNAVAILABLE) {
+            QTextStream(stderr) << "Unable to listen for Nearby Share connections as Zeroconf services are unavailable. Ensure Avahi is running.\n";
+        } else {
+            QTextStream(stderr) << "Could not register listener. Is the DBus service running?\n";
+        }
         return false;
     }
 

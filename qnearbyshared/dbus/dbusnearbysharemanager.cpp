@@ -97,6 +97,12 @@ QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage& messa
     d->listenerNum++;
     d->currentlyListening++;
 
+    if (!this->startServer()) {
+        // No good!
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBus::Error::ZEROCONF_UNAVAILABLE, "Unable to advertise zeroconf service"));
+        return {};
+    }
+
     auto listener = new DBusNearbyShareListener(message.service(), path, this);
     connect(listener, &DBusNearbyShareListener::stoppedListening, this, [this] {
         d->currentlyListening--;
@@ -105,16 +111,20 @@ QDBusObjectPath DBusNearbyShareManager::StartListening(const QDBusMessage& messa
         }
     });
 
-    this->setRunning(true);
-
     return QDBusObjectPath(path);
 }
 
 QDBusObjectPath DBusNearbyShareManager::DiscoverTargets(const QDBusMessage& message) {
     auto path = QStringLiteral("%1/targetDiscovery/%2").arg(QNearbyShare::DBus::DBUS_ROOT_PATH).arg(d->targetDiscoveryNum);
-    d->targetDiscoveryNum++;
 
-    new DBusNearbyShareDiscovery(message.service(), path, this);
+    auto discovery = DBusNearbyShareDiscovery::construct(message.service(), path, this);
+    if (!discovery) {
+        // No good!
+        QDBusConnection::sessionBus().send(message.createErrorReply(QNearbyShare::DBus::Error::ZEROCONF_UNAVAILABLE, "Unable to browse zeroconf services"));
+        return {};
+    }
+
+    d->targetDiscoveryNum++;
     return QDBusObjectPath(path);
 }
 
@@ -155,4 +165,14 @@ QDBusObjectPath DBusNearbyShareManager::registerNewShare(NearbyShareClient* clie
 
 void DBusNearbyShareManager::Quit() {
     QCoreApplication::quit();
+}
+
+bool DBusNearbyShareManager::startServer() {
+    if (d->server->running()) {
+        return true;
+    }
+
+    if (!d->server->start()) return false;
+    emit isRunningChanged(true);
+    return true;
 }

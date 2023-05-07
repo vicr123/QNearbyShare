@@ -37,7 +37,7 @@ class NearbyShareServer : public QObject {
 
         QString serverName();
 
-        void start();
+        bool start();
         void stop();
         bool running();
 

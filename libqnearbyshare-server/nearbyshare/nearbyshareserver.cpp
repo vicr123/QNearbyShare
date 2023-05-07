@@ -70,8 +70,8 @@ NearbyShareServer::~NearbyShareServer() {
     delete d;
 }
 
-void NearbyShareServer::start() {
-    if (d->running) return;
+bool NearbyShareServer::start() {
+    if (d->running) return true;
 
     d->tcp = new QTcpServer(this);
 #if QT_VERSION > QT_VERSION_CHECK(6, 4, 0)
@@ -82,7 +82,13 @@ void NearbyShareServer::start() {
     d->tcp->listen();
 
     d->zeroconf.startServicePublish(d->serviceName.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals).data(), QNearbyShare::ZEROCONF_TYPE, "", d->tcp->serverPort());
+    if (!d->zeroconf.publishExists()) {
+        d->tcp->close();
+        d->tcp->deleteLater();
+        return false;
+    }
     d->running = true;
+    return true;
 }
 
 void NearbyShareServer::stop() {

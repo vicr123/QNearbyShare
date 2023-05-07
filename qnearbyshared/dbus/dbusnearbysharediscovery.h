@@ -32,13 +32,15 @@
 
 #include <nearbysharetarget.h>
 
+class NearbyShareDiscovery;
 struct DBusNearbyShareDiscoveryPrivate;
 class DBusNearbyShareDiscovery : public QObject {
         Q_OBJECT
         Q_CLASSINFO("D-Bus Interface", QNEARBYSHARE_DBUS_SERVICE ".TargetDiscovery")
     public:
-        explicit DBusNearbyShareDiscovery(QString service, QString path, QObject* parent);
         ~DBusNearbyShareDiscovery() override;
+
+        static DBusNearbyShareDiscovery* construct(const QString& service, const QString& path, QObject* parent);
 
     public slots:
         Q_SCRIPTABLE QList<QNearbyShare::DBus::NearbyShareTarget> DiscoveredTargets(const QDBusMessage& message);
@@ -50,6 +52,7 @@ class DBusNearbyShareDiscovery : public QObject {
         void stoppedDiscovery();
 
     private:
+        explicit DBusNearbyShareDiscovery(NearbyShareDiscovery* discovery, const QString& service, const QString& path, QObject* parent);
         DBusNearbyShareDiscoveryPrivate* d;
 
         void stopDiscovery();

@@ -33,6 +33,7 @@ namespace QNearbyShare::DBus::Error {
     const QString INVALID_STATE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidState");
     const QString INVALID_DIRECTION = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidDirection");
     const QString INVALID_CONNECTION_STRING = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".InvalidConnectionString");
+    const QString ZEROCONF_UNAVAILABLE = QStringLiteral(QNEARBYSHARE_DBUS_SERVICE ".ZeroconfUnavailable");
 } // namespace QNearbyShare::DBus::Error
 
 #endif // QNEARBYSHARE_DBUSERRORS_H

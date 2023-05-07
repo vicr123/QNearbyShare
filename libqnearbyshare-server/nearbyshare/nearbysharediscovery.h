@@ -36,6 +36,8 @@ class NearbyShareDiscovery : public QObject {
         explicit NearbyShareDiscovery(QObject* parent);
         ~NearbyShareDiscovery() override;
 
+        bool start();
+
         struct NearbyShareTarget {
                 QString connectionString;
                 QString name;

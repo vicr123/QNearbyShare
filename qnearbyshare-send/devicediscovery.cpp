@@ -29,6 +29,7 @@
 #include <QDBusInterface>
 #include <QThread>
 #include <dbusconstants.h>
+#include <dbuserrors.h>
 #include <nearbysharetarget.h>
 
 struct DeviceDiscoveryPrivate {
@@ -36,7 +37,7 @@ struct DeviceDiscoveryPrivate {
         QDBusInterface* targetDiscovery{};
         Console* console;
 
-        bool valid = true;
+        QString error;
 };
 
 DeviceDiscovery::DeviceDiscovery(Console* console, QObject* parent) :
@@ -47,7 +48,7 @@ DeviceDiscovery::DeviceDiscovery(Console* console, QObject* parent) :
 
     auto reply = d->manager->call("DiscoverTargets");
     if (reply.type() != QDBusMessage::ReplyMessage) {
-        d->valid = false;
+        d->error = reply.errorName();
     }
 
     auto targetDiscoveryPath = reply.arguments().first().value<QDBusObjectPath>();
@@ -60,8 +61,12 @@ DeviceDiscovery::~DeviceDiscovery() {
 }
 
 QString DeviceDiscovery::exec(QString* peerName) {
-    if (!d->valid) {
-        d->console->outputErrorLine("Could not scan for devices. Is the DBus service running?");
+    if (!d->error.isEmpty()) {
+        if (d->error == QNearbyShare::DBus::Error::ZEROCONF_UNAVAILABLE) {
+            d->console->outputErrorLine("Unable to discover Nearby Share devices as Zeroconf services are unavailable. Ensure Avahi is running.");
+        } else {
+            d->console->outputErrorLine("Could not scan for devices. Is the DBus service running?");
+        }
         return {};
     }
 

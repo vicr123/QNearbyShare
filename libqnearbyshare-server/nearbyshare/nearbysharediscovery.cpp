@@ -61,7 +61,6 @@ NearbyShareDiscovery::NearbyShareDiscovery(QObject* parent) :
         d->targets.remove(service);
         emit targetGone(connectionString);
     });
-    d->zeroconf.startBrowser(QNearbyShare::ZEROCONF_TYPE);
 }
 
 NearbyShareDiscovery::~NearbyShareDiscovery() {
@@ -71,4 +70,9 @@ NearbyShareDiscovery::~NearbyShareDiscovery() {
 
 QList<NearbyShareDiscovery::NearbyShareTarget> NearbyShareDiscovery::availableTargets() {
     return d->targets.values();
+}
+
+bool NearbyShareDiscovery::start() {
+    d->zeroconf.startBrowser(QNearbyShare::ZEROCONF_TYPE);
+    return d->zeroconf.browserExists();
 }

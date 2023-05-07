@@ -38,7 +38,7 @@ struct DBusNearbyShareDiscoveryPrivate {
         NearbyShareDiscovery* discovery;
 };
 
-DBusNearbyShareDiscovery::DBusNearbyShareDiscovery(QString service, QString path, QObject* parent) :
+DBusNearbyShareDiscovery::DBusNearbyShareDiscovery(NearbyShareDiscovery* discovery, const QString& service, const QString& path, QObject* parent) :
     QObject(parent) {
     d = new DBusNearbyShareDiscoveryPrivate();
     d->path = path;
@@ -50,7 +50,7 @@ DBusNearbyShareDiscovery::DBusNearbyShareDiscovery(QString service, QString path
     d->watcher.addWatchedService(service);
     connect(&d->watcher, &QDBusServiceWatcher::serviceUnregistered, this, &DBusNearbyShareDiscovery::stopDiscovery);
 
-    d->discovery = new NearbyShareDiscovery(this);
+    d->discovery = discovery;
     connect(d->discovery, &NearbyShareDiscovery::newTarget, this, [this](const NearbyShareDiscovery::NearbyShareTarget& t) {
         QNearbyShare::DBus::NearbyShareTarget target;
         target.connectionString = t.connectionString;
@@ -60,6 +60,7 @@ DBusNearbyShareDiscovery::DBusNearbyShareDiscovery(QString service, QString path
         emit DiscoveredNewTarget(target);
     });
     connect(d->discovery, &NearbyShareDiscovery::targetGone, this, &DBusNearbyShareDiscovery::DiscoveredTargetGone);
+    d->discovery->setParent(this);
 }
 
 DBusNearbyShareDiscovery::~DBusNearbyShareDiscovery() {
@@ -89,4 +90,14 @@ void DBusNearbyShareDiscovery::StopDiscovery(const QDBusMessage& message) {
         return;
     }
     this->stopDiscovery();
+}
+
+DBusNearbyShareDiscovery* DBusNearbyShareDiscovery::construct(const QString& service, const QString& path, QObject* parent) {
+    auto discovery = new NearbyShareDiscovery(nullptr);
+    if (!discovery->start()) {
+        discovery->deleteLater();
+        return nullptr;
+    }
+
+    return new DBusNearbyShareDiscovery(discovery, service, path, parent);
 }
