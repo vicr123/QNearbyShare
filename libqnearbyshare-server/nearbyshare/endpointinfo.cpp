@@ -27,7 +27,7 @@
 #include <QRandomGenerator>
 
 EndpointInfo EndpointInfo::fromByteArray(const QByteArray& data, bool* ok) {
-    if (data.length() < 17) {
+    if (data.length() <= 17) {
         if (ok) *ok = false;
         return {};
     }
@@ -40,7 +40,7 @@ EndpointInfo EndpointInfo::fromByteArray(const QByteArray& data, bool* ok) {
     info.deviceType = (byte1 & 0b00001110) >> 1;
 
     auto deviceNameLength = data.at(17);
-    if (data.length() < deviceNameLength + 17) {
+    if (data.length() <= deviceNameLength + 17) {
         if (ok) *ok = false;
         return {};
     }
