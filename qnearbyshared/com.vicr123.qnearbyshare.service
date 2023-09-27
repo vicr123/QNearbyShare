@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=${QNEARBYSHARE_DBUS_SERVICE}
-Exec=${CMAKE_INSTALL_FULL_LIBDIR}/qnearbyshared

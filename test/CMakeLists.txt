@@ -1,9 +1,12 @@
-add_subdirectory(googletest)
+find_package(GTest QUIET)
+if (NOT GTest_FOUND)
+    add_subdirectory(googletest)
+endif ()
 
-set(SOURCES
-        cryptography-test.cpp
-        )
+set(SOURCES cryptography-test.cpp)
 
 add_executable(tests ${SOURCES})
-target_include_directories(tests PRIVATE googletest/googletest/include googletest/googletest ../libqnearbyshare-server)
-target_link_libraries(tests libqnearbyshare-server gtest gtest_main)
+target_include_directories(tests PRIVATE ../libqnearbyshare-server)
+target_link_libraries(tests libqnearbyshare-server GTest::gtest_main)
+
+add_test(NAME test COMMAND tests)
