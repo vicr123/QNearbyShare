@@ -1,35 +1,39 @@
 find_package(Protobuf REQUIRED)
+find_package(absl REQUIRED)
 
 set(SOURCES
-        nearbyshare/nearbyshareserver.cpp
-        nearbyshare/nearbysocket.cpp
-        nearbyshare/endpointinfo.cpp
-        nearbyshare/cryptography.cpp
-        nearbyshare/nearbyshareclient.cpp
-        nearbyshare/abstractnearbypayload.cpp
-        nearbyshare/nearbypayload.cpp
-        nearbyshare/nearbysharediscovery.cpp
-        )
+    nearbyshare/nearbyshareserver.cpp
+    nearbyshare/nearbysocket.cpp
+    nearbyshare/endpointinfo.cpp
+    nearbyshare/cryptography.cpp
+    nearbyshare/nearbyshareclient.cpp
+    nearbyshare/abstractnearbypayload.cpp
+    nearbyshare/nearbypayload.cpp
+    nearbyshare/nearbysharediscovery.cpp)
 
 set(HEADERS
-        nearbyshare/nearbyshareserver.h
-        nearbyshare/nearbysocket.h
-        nearbyshare/endpointinfo.h
-        nearbyshare/cryptography.h
-        nearbyshare/nearbyshareclient.h
-        nearbyshare/abstractnearbypayload.h
-        nearbyshare/nearbypayload.h
-        nearbyshare/nearbysharediscovery.h nearbyshare/nearbyshareconstants.h)
+    nearbyshare/nearbyshareserver.h
+    nearbyshare/nearbysocket.h
+    nearbyshare/endpointinfo.h
+    nearbyshare/cryptography.h
+    nearbyshare/nearbyshareclient.h
+    nearbyshare/abstractnearbypayload.h
+    nearbyshare/nearbypayload.h
+    nearbyshare/nearbysharediscovery.h
+    nearbyshare/nearbyshareconstants.h)
 
-add_subdirectory(QtZeroConf EXCLUDE_FROM_ALL)
+find_package(QtZeroConf QUIET)
+if (NOT QtZeroConf_FOUND)
+    set(BUILD_SHARED_LIBS OFF)
+    add_subdirectory(QtZeroConf EXCLUDE_FROM_ALL)
+endif ()
+
 add_subdirectory(proto)
 
 option(USE_OPENSSL "Use OpenSSL" OFF)
 
 add_library(libqnearbyshare-server STATIC ${SOURCES} ${HEADERS})
-set_target_properties(libqnearbyshare-server PROPERTIES
-        OUTPUT_NAME "qnearbyshare-server"
-        )
+set_target_properties(libqnearbyshare-server PROPERTIES OUTPUT_NAME "qnearbyshare-server")
 target_link_libraries(libqnearbyshare-server Qt::Core Qt::Network QtZeroConf qnearbyshared-proto ${CRYPTO_LIBRARY})
 
 if (USE_OPENSSL)
@@ -43,4 +47,4 @@ else ()
 
     target_sources(libqnearbyshare-server PRIVATE nearbyshare/cryptography/cryptoppcryptograhy.cpp)
     target_link_libraries(libqnearbyshare-server PkgConfig::CryptoPP)
-endif()
+endif ()
