@@ -10,6 +10,6 @@ protobuf_generate_cpp(
 
 set_property(SOURCE ${PROTO_SRCS} ${PROTO_HEADERS} PROPERTY SKIP_AUTOGEN ON)
 
-add_library(qnearbyshared-proto ${PROTO_SRCS} ${PROTO_HEADERS})
+add_library(qnearbyshared-proto STATIC ${PROTO_SRCS} ${PROTO_HEADERS})
 target_link_libraries(qnearbyshared-proto ${Protobuf_LIBRARIES} absl::log_internal_message absl::log_internal_check_op)
 target_include_directories(qnearbyshared-proto PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
