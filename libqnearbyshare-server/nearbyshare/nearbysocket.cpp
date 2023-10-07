@@ -40,8 +40,6 @@
 #include <utility>
 
 #include <QQueue>
-#include <openssl/ec.h>
-#include <openssl/evp.h>
 
 #include "abstractnearbypayload.h"
 #include "cryptography.h"

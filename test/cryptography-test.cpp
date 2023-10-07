@@ -25,8 +25,6 @@
 #include "nearbyshare/cryptography.h"
 #include "gtest/gtest.h"
 
-#include <openssl/ec.h>
-
 TEST(crypto, aes256decrypt) {
     QByteArray expected("HELLO WORLD");
     QByteArray iv("AABBCCDDEEFFGGHH");
