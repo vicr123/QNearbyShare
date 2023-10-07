@@ -26,7 +26,6 @@
 #define QNEARBYSHARE_CRYPTOGRAPHY_H
 
 #include <QString>
-#include <openssl/evp.h>
 
 struct EcKey;
 namespace Cryptography {
