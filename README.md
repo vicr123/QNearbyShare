@@ -9,9 +9,7 @@ Currently, QNearbyShare has been tested with the following Nearby Share implemen
 | Android                                         | No       | Yes          |
 | Nearby Share Beta (Windows)                     | Untested | Untested     |
 | QNearbyShare                                    | Yes      | Yes          |
-| [NearDrop](https://github.com/grishka/NearDrop) | Yes      | N/A[^1]      |
-
-[^1]: NearDrop does not support sending
+| [NearDrop](https://github.com/grishka/NearDrop) | Yes      | Yes          |
 
 ---
 
