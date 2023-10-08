@@ -60,7 +60,7 @@ NearbyShareServer::NearbyShareServer() :
     d->serviceName.append("\x23"); // NOLINT(modernize-raw-string-literal)
     d->serviceName.append(endpointId.toUtf8());
     d->serviceName.append("\xFC\x9F\x5E");
-    d->serviceName.append("\x00\x00");
+    d->serviceName.append("\x00\x00", 2);
 
     d->zeroconf.addServiceTxtRecord("n", EndpointInfo::system().toByteArray().toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
 }
