@@ -4,12 +4,12 @@ QNearbyShare is a [Nearby Share](https://support.google.com/files/answer/1051418
 
 Currently, QNearbyShare has been tested with the following Nearby Share implementations:
 
-| Implementation                                  | Send to  | Receive from |
-|-------------------------------------------------|----------|--------------|
-| Android                                         | No       | Yes          |
-| Nearby Share Beta (Windows)                     | Untested | Untested     |
-| QNearbyShare                                    | Yes      | Yes          |
-| [NearDrop](https://github.com/grishka/NearDrop) | Yes      | Yes          |
+| Implementation                                  | Send to | Receive from |
+|-------------------------------------------------|---------|--------------|
+| Android                                         | No      | Yes          |
+| Nearby Share Beta (Windows)                     | No      | Yes          |
+| QNearbyShare                                    | Yes     | Yes          |
+| [NearDrop](https://github.com/grishka/NearDrop) | Yes     | Yes          |
 
 ---
 
