@@ -39,6 +39,7 @@ class NearbySocket : public QObject {
         ~NearbySocket();
 
         bool active();
+        void sendClientInit();
 
         void sendPacket(const QByteArray& packet);
         void sendPacket(const google::protobuf::MessageLite& message);

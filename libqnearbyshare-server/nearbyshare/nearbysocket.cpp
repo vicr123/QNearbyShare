@@ -1,26 +1,24 @@
 
 
-/*
- * Copyright (c) 2023 Victor Tran
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// Copyright (c) 2023 Victor Tran
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #include "nearbysocket.h"
 
@@ -130,8 +128,10 @@ NearbySocket::NearbySocket(QIODevice* ioDevice, bool isServer, QObject* parent) 
                 emit disconnected();
             });
             this->sendConnectionRequest();
+            this->sendClientInit();
         } else {
             this->sendConnectionRequest();
+            this->sendClientInit();
         }
     }
 }
@@ -700,22 +700,9 @@ bool NearbySocket::active() {
     return d->state != NearbySocketPrivate::Closed && d->state != NearbySocketPrivate::Error;
 }
 
-void NearbySocket::sendConnectionRequest() {
-    auto connectionRequest = new location::nearby::connections::ConnectionRequestFrame();
-    connectionRequest->set_endpoint_info(EndpointInfo::system().toByteArray().toStdString());
-
-    auto v1 = new location::nearby::connections::V1Frame();
-    v1->set_type(location::nearby::connections::V1Frame_FrameType_CONNECTION_REQUEST);
-    v1->set_allocated_connection_request(connectionRequest);
-
-    location::nearby::connections::OfflineFrame offlineFrame;
-    offlineFrame.set_version(location::nearby::connections::OfflineFrame_Version_V1);
-    offlineFrame.set_allocated_v1(v1);
-
-    sendPacket(offlineFrame);
-
+void NearbySocket::sendClientInit() {
     // Prepare the UKey2 Client Finish
-    auto ecP256PublicKey = new securemessage::EcP256PublicKey();
+    const auto ecP256PublicKey = new securemessage::EcP256PublicKey();
     d->clientKey = Cryptography::generateEcdsaKeyPair();
 
     ecP256PublicKey->set_x(Cryptography::ecdsaX(d->clientKey).toStdString());
@@ -739,7 +726,7 @@ void NearbySocket::sendConnectionRequest() {
     clientInit.set_random(Cryptography::randomBytes(32).toStdString());
     clientInit.set_next_protocol("AES_256_CBC-HMAC_SHA256");
 
-    auto commitment = clientInit.add_cipher_commitments();
+    const auto commitment = clientInit.add_cipher_commitments();
     commitment->set_handshake_cipher(securegcm::P256_SHA512); // TODO: Support Curve25519
     commitment->set_commitment(QCryptographicHash::hash(d->clientFinishMessage, QCryptographicHash::Sha512).toStdString());
 
@@ -750,6 +737,24 @@ void NearbySocket::sendConnectionRequest() {
     d->clientInitMessage = QByteArray::fromStdString(initMessage.SerializeAsString());
     sendPacket(d->clientInitMessage);
     d->state = NearbySocketPrivate::WaitingForUkey2ServerInit;
+}
+
+void NearbySocket::sendConnectionRequest() {
+    auto connectionRequest = new location::nearby::connections::ConnectionRequestFrame();
+    connectionRequest->set_endpoint_id(QStringLiteral("EIDX").toStdString());
+    connectionRequest->set_endpoint_name(EndpointInfo::system().deviceName.toStdString());
+    connectionRequest->set_endpoint_info(EndpointInfo::system().toByteArray().toStdString());
+    connectionRequest->add_mediums(location::nearby::connections::ConnectionRequestFrame_Medium_WIFI_LAN);
+
+    auto v1 = new location::nearby::connections::V1Frame();
+    v1->set_type(location::nearby::connections::V1Frame_FrameType_CONNECTION_REQUEST);
+    v1->set_allocated_connection_request(connectionRequest);
+
+    location::nearby::connections::OfflineFrame offlineFrame;
+    offlineFrame.set_version(location::nearby::connections::OfflineFrame_Version_V1);
+    offlineFrame.set_allocated_v1(v1);
+
+    sendPacket(offlineFrame);
 }
 
 void NearbySocket::setupDiffieHellman(const QByteArray& x, const QByteArray& y) {
