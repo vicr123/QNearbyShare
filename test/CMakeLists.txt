@@ -1,5 +1,6 @@
 find_package(GTest QUIET)
 if (NOT GTest_FOUND)
+    set(INSTALL_GTEST OFF)
     add_subdirectory(googletest)
 endif ()
 
