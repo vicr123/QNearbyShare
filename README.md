@@ -6,7 +6,7 @@ Currently, QNearbyShare has been tested with the following Nearby Share implemen
 
 | Implementation                                  | Send to | Receive from |
 |-------------------------------------------------|---------|--------------|
-| Android                                         | No      | Yes          |
+| Android                                         | Yes     | Yes          |
 | Nearby Share Beta (Windows)                     | No      | Yes          |
 | QNearbyShare                                    | Yes     | Yes          |
 | [NearDrop](https://github.com/grishka/NearDrop) | Yes     | Yes          |
