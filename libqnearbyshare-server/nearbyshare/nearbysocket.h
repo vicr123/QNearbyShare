@@ -51,7 +51,7 @@ class NearbySocket : public QObject {
 
         void sendPayloadPacket(const QByteArray& packet);
         void sendPayloadPacket(const google::protobuf::MessageLite& message);
-        void sendPayloadPacket(const QByteArray& packet, qint64 id, PayloadType payloadType = Bytes, qint64 offset = 0, bool lastChunk = true);
+        void sendPayloadPacket(const QByteArray& packet, qint64 id, PayloadType payloadType = Bytes, qint64 offset = 0, bool lastChunk = true, qint64 totalPayloadSize = 0);
         void sendPayloadPacket(const google::protobuf::MessageLite& message, qint64 id);
 
         void insertPendingPayload(qint64 id, const AbstractNearbyPayloadPtr& payload);

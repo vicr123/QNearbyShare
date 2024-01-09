@@ -601,7 +601,9 @@ void NearbySocket::sendPayloadPacket(const google::protobuf::MessageLite& messag
     sendPayloadPacket(QByteArray::fromStdString(message.SerializeAsString()));
 }
 
-void NearbySocket::sendPayloadPacket(const QByteArray& packet, qint64 id, PayloadType payloadType, qint64 offset, bool lastChunk) {
+void NearbySocket::sendPayloadPacket(const QByteArray& packet, qint64 id, PayloadType payloadType, qint64 offset, bool lastChunk, qint64 totalPayloadSize) {
+    if (totalPayloadSize == 0) totalPayloadSize = packet.length();
+
     location::nearby::connections::PayloadTransferFrame_PayloadHeader_PayloadType pbPayloadType;
     switch (payloadType) {
         case Bytes:
@@ -615,7 +617,7 @@ void NearbySocket::sendPayloadPacket(const QByteArray& packet, qint64 id, Payloa
     auto payloadHeader1 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
     payloadHeader1->set_id(id);
     payloadHeader1->set_type(pbPayloadType);
-    payloadHeader1->set_total_size(packet.length());
+    payloadHeader1->set_total_size(totalPayloadSize);
     payloadHeader1->set_is_sensitive(false);
 
     auto payloadChunk1 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();
@@ -641,7 +643,7 @@ void NearbySocket::sendPayloadPacket(const QByteArray& packet, qint64 id, Payloa
         auto payloadHeader2 = new location::nearby::connections::PayloadTransferFrame_PayloadHeader();
         payloadHeader2->set_id(id);
         payloadHeader2->set_type(pbPayloadType);
-        payloadHeader2->set_total_size(packet.length());
+        payloadHeader2->set_total_size(totalPayloadSize);
         payloadHeader2->set_is_sensitive(false);
 
         auto payloadChunk2 = new location::nearby::connections::PayloadTransferFrame_PayloadChunk();

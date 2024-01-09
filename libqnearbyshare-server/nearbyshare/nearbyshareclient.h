@@ -94,7 +94,7 @@ class NearbyShareClient : public QObject {
 
         void readyForEncryptedMessages();
         void messageReceived(const AbstractNearbyPayloadPtr& payload);
-        void setState(State state);
+        void setState(State state, bool dontDisconnect = false);
 
         void sendPairedKeyEncryptionResponse();
         void checkIfComplete();
