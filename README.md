@@ -33,7 +33,7 @@ cmake --build build
 To build with OpenSSL instead of Crypto++
 
 ```bash
-cmake -B build -S . -DUSE_OPENSSL
+cmake -B build -S . -DUSE_OPENSSL=1
 cmake --build build
 ```
 
