@@ -6,10 +6,12 @@ Currently, QNearbyShare has been tested with the following Nearby Share implemen
 
 | Implementation                                  | Send to | Receive from |
 |-------------------------------------------------|---------|--------------|
-| Android                                         | Yes     | Yes          |
+| Android                                         | No*     | Yes          |
 | Nearby Share Beta (Windows)                     | No      | Yes          |
 | QNearbyShare                                    | Yes     | Yes          |
 | [NearDrop](https://github.com/grishka/NearDrop) | Yes     | Yes          |
+
+*Devices with "Quick Share" are no longer compatible with QNearbyShare, as there is no known way to initiate receive mode from the device.
 
 ---
 
